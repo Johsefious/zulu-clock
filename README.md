@@ -26,7 +26,6 @@ Weather refreshes every 20 minutes. Headlines refresh every 30 minutes with a li
 ### Option A — Launch script (recommended, works in any browser)
 
 ```bash
-cd v1
 ./launch.sh
 ```
 
@@ -34,10 +33,10 @@ Opens the clock at `http://localhost:8765/zulu-clock.html` using Python's built-
 
 ### Option B — Open directly in browser
 
-Double-click `v1/zulu-clock.html`, or:
+Double-click `zulu-clock.html`, or:
 
 ```bash
-open v1/zulu-clock.html
+open zulu-clock.html
 ```
 
 Works in Safari and Chrome. All API calls go through CORS-friendly proxies so local file access is not an issue.
@@ -61,7 +60,6 @@ Works in Safari and Chrome. All API calls go through CORS-friendly proxies so lo
 ```
 zulu-clock/
 ├── README.md
-└── v1/
-    ├── zulu-clock.html   ← the entire app (single file)
-    └── launch.sh         ← macOS launcher (starts local server + opens browser)
+├── zulu-clock.html   ← the entire app (single file)
+└── launch.sh         ← macOS launcher (starts local server + opens browser)
 ```
