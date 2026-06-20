@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZULU TIME // TACTICAL DISPLAY</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens — adjusted by media queries below ── */
+    :root {
+      --green:       #00ff41;
+      --green-dim:   #00a828;
+      --green-dark:  #003a0e;
+      --green-glow:  rgba(0,255,65,0.25);
+      --amber:       #ffb700;
+      --cyan:        #00eeff;
+      --red:         #ff3c3c;
+      --bg:          #000;
+
+      --pad-v:       10px;
+      --pad-h:       20px;
+      --gap:         8px;
+      --zulu-size:   clamp(70px, min(11vw, 13.5vh), 220px);
+      --zulu-lsp:    6px;
+      --zulu-date-size: clamp(16px, 0.85vw, 20px);
+      --zulu-lbl-size:  clamp(13px, 0.7vw, 15px);
+      --tz-size:     clamp(32px, 2.8vw, 44px);
+      --tz-city-size: clamp(13px, 0.55vw, 15px);
+      --tz-meta-size: clamp(12px, 0.5vw, 14px);
+      --tz-cols:     5;
+      --wx-temp-size: clamp(46px, 4vw, 68px);
+      --wx-city-size: clamp(13px, 0.55vw, 15px);
+      --wx-sub-size:  clamp(13px, 0.55vw, 14px);
+      --wx-cols:     4;
+      --topbar-size: clamp(8px, 0.9vw, 11px);   /* topbar unchanged per user request */
+      --ticker-size: clamp(13px, 0.6vw, 16px);
+      --section-lbl-size: clamp(13px, 0.55vw, 15px);
+    }
+
+    /* ── Compact: short screens ─── */
+    @media (max-height: 780px) {
+      :root {
+        --pad-v: 6px;
+        --gap:   5px;
+        --zulu-size: clamp(52px, min(9.5vw, 10.5vh), 140px);
+        --tz-size: clamp(28px, 2.4vw, 36px);
+        --wx-temp-size: clamp(36px, 3.4vw, 54px);
+      }
+    }
+    @media (max-height: 620px) {
+      :root {
+        --pad-v: 4px;
+        --gap:   3px;
+        --zulu-size: clamp(42px, min(8vw, 9vh), 100px);
+        --tz-size: clamp(24px, 2vw, 30px);
+        --wx-temp-size: clamp(30px, 2.8vw, 44px);
+      }
+    }
+
+    /* ── Narrow screens ─── */
+    @media (max-width: 1100px) {
+      :root { --tz-size: clamp(28px, 2.6vw, 38px); }
+    }
+    @media (max-width: 860px) {
+      :root { --tz-cols: 3; --wx-cols: 2; --pad-h: 12px; }
+    }
+    @media (max-width: 560px) {
+      :root { --tz-cols: 2; --wx-cols: 2; --pad-h: 8px; }
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--green);
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── CRT scanlines ─── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 3px,
+        rgba(0,0,0,0.11) 3px, rgba(0,0,0,0.11) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+    /* ── Vignette ─── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.72) 100%);
+      pointer-events: none;
+      z-index: 998;
+    }
+
+    .grid-bg {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,65,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,65,0.04) 1px, transparent 1px);
+      background-size: 50px 50px;
+      z-index: 0;
+    }
+
+    /* ── Shell ─── */
+    .shell {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: var(--pad-v) var(--pad-h) calc(var(--pad-v) - 2px);
+      gap: var(--gap);
+      animation: screenflicker 14s infinite;
+    }
+
+    @keyframes screenflicker {
+      0%,88%,90.5%,93%,100% { opacity: 1; }
+      89%  { opacity: .91; }
+      91%  { opacity: .97; }
+    }
+
+    /* ── Topbar ─── */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--green-dark);
+      padding-bottom: calc(var(--pad-v) * 0.6);
+      font-size: var(--topbar-size);
+      letter-spacing: 2.5px;
+      color: var(--green-dim);
+      flex-shrink: 0;
+      min-height: 0;
+    }
+
+    .status-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .status-right { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+
+    .dot {
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--green);
+      flex-shrink: 0;
+      animation: heartbeat 2s ease-in-out infinite;
+    }
+
+    @keyframes heartbeat {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .25; transform: scale(.65); }
+    }
+
+    #feed-status   { color: rgba(0,255,65,0.65); font-size: var(--topbar-size); }
+    #feed-countdown{ color: rgba(0,255,65,0.65); font-size: var(--topbar-size); margin-left: 4px; }
+
+    /* ── ZULU primary ─── */
+    .zulu-block {
+      text-align: center;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .zulu-label {
+      font-size: var(--zulu-lbl-size);
+      letter-spacing: clamp(4px, 0.8vw, 10px);
+      color: var(--green-dim);
+      margin-bottom: 1px;
+    }
+
+    #zulu-time {
+      font-family: 'VT323', 'Courier New', monospace;
+      font-size: var(--zulu-size);
+      letter-spacing: var(--zulu-lsp);
+      color: var(--green);
+      text-shadow:
+        0 0 5px  var(--green),
+        0 0 12px var(--green),
+        0 0 28px var(--green-glow),
+        0 0 55px rgba(0,255,65,0.07);
+      display: block;
+    }
+
+    #zulu-date {
+      font-size: var(--zulu-date-size);
+      letter-spacing: clamp(3px, 0.5vw, 6px);
+      color: var(--green-dim);
+      margin-top: 1px;
+    }
+
+    /* ── Timezone row ─── */
+    .tz-row {
+      display: grid;
+      grid-template-columns: repeat(var(--tz-cols), 1fr);
+      gap: clamp(5px, 0.8vw, 12px);
+      flex-shrink: 0;
+    }
+
+    .tz-card {
+      border: 1px solid rgba(0,255,65,0.17);
+      padding: clamp(5px, 0.6vw, 9px) 6px clamp(4px, 0.5vw, 7px);
+      text-align: center;
+      background: rgba(0,255,65,0.018);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tz-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 12%; right: 12%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--green-dim), transparent);
+    }
+
+    .tz-city {
+      font-size: var(--tz-city-size);
+      letter-spacing: clamp(1px, 0.25vw, 3px);
+      color: var(--green-dim);
+      margin-bottom: 2px;
+    }
+
+    .tz-hm {
+      font-family: 'VT323', monospace;
+      font-size: var(--tz-size);
+      color: var(--green);
+      text-shadow: 0 0 7px var(--green-glow);
+      line-height: 1;
+    }
+
+    .tz-meta {
+      font-size: var(--tz-meta-size);
+      color: rgba(0,255,65,0.38);
+      letter-spacing: 1px;
+      margin-top: 1px;
+    }
+
+    /* ── Divider ─── */
+    .rule {
+      border: none;
+      border-top: 1px solid rgba(0,255,65,0.11);
+      flex-shrink: 0;
+    }
+
+    /* ── Section label ─── */
+    .section-head {
+      font-size: var(--section-lbl-size);
+      letter-spacing: clamp(2px, 0.4vw, 5px);
+      color: var(--green-dim);
+      margin-bottom: clamp(4px, 0.6vh, 9px);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .section-head::before { content: '◈ '; }
+    .section-head::after  { content: ''; flex: 1; height: 1px; background: rgba(0,255,65,0.11); }
+
+    /* ── Weather ─── */
+    .wx-section { flex-shrink: 0; }
+
+    .wx-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--wx-cols), 1fr);
+      gap: clamp(5px, 0.8vw, 12px);
+    }
+
+    .wx-card {
+      border: 1px solid rgba(0,255,65,0.17);
+      padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1vw, 14px);
+      background: rgba(0,255,65,0.018);
+      position: relative;
+    }
+    .wx-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--green-dim), transparent);
+    }
+
+    .wx-city { font-size: var(--wx-city-size); letter-spacing: 2.5px; color: var(--green-dim); margin-bottom: 3px; }
+
+    .wx-temp {
+      font-family: 'VT323', monospace;
+      font-size: var(--wx-temp-size);
+      color: var(--green);
+      text-shadow: 0 0 9px var(--green-glow);
+      line-height: 1;
+    }
+    .wx-unit { font-size: calc(var(--wx-temp-size) * 0.45); color: var(--green-dim); }
+    .wx-feels { font-size: var(--wx-sub-size); color: rgba(0,255,65,0.42); letter-spacing: 1px; margin-top: 2px; }
+    .wx-cond  { font-size: var(--wx-sub-size); color: var(--green-dim); letter-spacing: 1px; margin-top: 1px; }
+    .wx-pend  { font-size: calc(var(--wx-sub-size) * 1.1); color: var(--green-dim); animation: blink 1s step-end infinite; }
+    .wx-err   { font-size: var(--wx-sub-size); color: var(--red); letter-spacing: 1px; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── News ticker ─── */
+    .ticker {
+      border-top: 1px solid rgba(0,255,65,0.11);
+      padding-top: 4px;
+      overflow: hidden;
+      white-space: nowrap;
+      flex-shrink: 0;
+      position: relative;
+      height: clamp(16px, 2.2vh, 22px);
+    }
+
+    #ticker-inner {
+      position: absolute;
+      top: 4px;
+      display: inline-block;
+      white-space: nowrap;
+      font-size: var(--ticker-size);
+      letter-spacing: 1.2px;
+      color: rgba(0,255,65,0.55);
+      will-change: transform;
+    }
+
+    #ticker-inner .ntag { font-weight: bold; letter-spacing: 2px; }
+    #ticker-inner .ntag-world { color: var(--green); }
+    #ticker-inner .ntag-us    { color: var(--amber); }
+    #ticker-inner .ntag-ca    { color: var(--cyan);  }
+    #ticker-inner .ntag-sys   { color: var(--green-dim); }
+    #ticker-inner .nsep { color: rgba(0,255,65,0.22); }
+
+    /* ── Corner tags ─── */
+    .corner {
+      position: fixed;
+      font-size: clamp(7px, 0.7vw, 9px);
+      color: rgba(0,255,65,0.16);
+      letter-spacing: 1.5px;
+      z-index: 900;
+    }
+    .tl { top:3px; left:5px; }
+    .tr { top:3px; right:5px; }
+    .bl { bottom:3px; left:5px; }
+    .br { bottom:3px; right:5px; }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="corner tl">CCLOCK v3.0 // ARX</div>
+  <div class="corner tr">ENC:AES-256 // SECURE</div>
+  <div class="corner bl">LAT:37.87N LON:122.27W</div>
+  <div class="corner br" id="corner-br">GRID::INIT</div>
+
+  <div class="shell">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="status-left">
+        <span class="dot"></span>
+        TACTICAL TIME DISPLAY &mdash; ALL SYSTEMS NOMINAL
+        &nbsp;<span id="feed-status">&#9679; FEED: LOADING&hellip;</span><span id="feed-countdown"></span>
+      </div>
+      <div class="status-right">
+        <span id="uptime">SYS::UPTIME 00:00:00</span>
+      </div>
+    </div>
+
+    <!-- ZULU -->
+    <div class="zulu-block">
+      <div class="zulu-label">&#9668; ZULU TIME &nbsp;&bull;&nbsp; COORDINATED UNIVERSAL TIME &#9658;</div>
+      <span id="zulu-time">--:--:--</span>
+      <div id="zulu-date">SYNCHRONIZING&hellip;</div>
+    </div>
+
+    <!-- Timezones (5 cities, Portland removed) -->
+    <div class="tz-row" id="tz-row"></div>
+
+    <hr class="rule">
+
+    <!-- Weather -->
+    <div class="wx-section">
+      <div class="section-head">CALIFORNIA WEATHER INTEL &mdash; OPEN-METEO LIVE</div>
+      <div class="wx-grid" id="wx-grid"></div>
+    </div>
+
+    <!-- Live news ticker -->
+    <div class="ticker">
+      <span id="ticker-inner"></span>
+    </div>
+
+  </div>
+
+  <script>
+  // ─────────────────────────────────────────────────────────────
+  //  CONFIG
+  // ─────────────────────────────────────────────────────────────
+  const ZONES = [
+    { city:'LOS ANGELES', zone:'America/Los_Angeles' },
+    { city:'DENVER',      zone:'America/Denver'      },
+    { city:'CHICAGO',     zone:'America/Chicago'     },
+    { city:'NEW YORK',    zone:'America/New_York'    },
+    { city:'LONDON',      zone:'Europe/London'       },
+  ];
+
+  const WX_LOCS = [
+    { id:'berkeley', label:'BERKELEY',    lat:37.8716, lon:-122.2727 },
+    { id:'fresno',   label:'FRESNO',      lat:36.7378, lon:-119.7871 },
+    { id:'tulare',   label:'TULARE',      lat:36.2077, lon:-119.3473 },
+    { id:'la',       label:'LOS ANGELES', lat:34.0522, lon:-118.2437 },
+  ];
+
+  // RSS headlines — two proxy layers for resilience:
+  //   1. rss2json.com  (JSON, no key, free 10k req/day)
+  //   2. allorigins.win (raw XML fallback, handles null origin from file://)
+  // Google News RSS — proxy-agnostic, never blocks scrapers, updates ~15 min
+  const RSS_FEEDS = [
+    { tag:'WORLD', cls:'ntag-world', url:'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en&gl=US&ceid=US:en' },
+    { tag:'US',    cls:'ntag-us',    url:'https://news.google.com/rss/headlines/section/topic/NATION?hl=en&gl=US&ceid=US:en' },
+    { tag:'CA',    cls:'ntag-ca',    url:'https://news.google.com/rss/search?q=california+news&hl=en&gl=US&ceid=US:en' },
+  ];
+  const RSS2JSON_BASE   = 'https://api.rss2json.com/v1/api.json?count=10&rss_url=';
+  const ALLORIGINS_BASE = 'https://api.allorigins.win/get?url=';
+  const CORSPROXY_BASE  = 'https://corsproxy.io/?';
+  const WX_REFRESH_MS   = 20 * 60 * 1000;
+  const NEWS_REFRESH_MS = 30 * 60 * 1000;  // 30 min — rss2json caches feeds ~1h at origin anyway
+  const TICKER_PX_PER_FRAME = 1.3;
+  let   nextNewsRefreshAt = null;
+  let   fetchCount = 0;  // increments every loadHeadlines call, visible in UI
+
+  // ─────────────────────────────────────────────────────────────
+  //  DOM BUILD
+  // ─────────────────────────────────────────────────────────────
+  const tzRow = document.getElementById('tz-row');
+  ZONES.forEach((z, i) => {
+    tzRow.insertAdjacentHTML('beforeend', `
+      <div class="tz-card">
+        <div class="tz-city">${z.city}</div>
+        <div class="tz-hm"  id="tz${i}-hm">--:--</div>
+        <div class="tz-meta" id="tz${i}-meta">--- -- --</div>
+      </div>`);
+  });
+
+  const wxGrid = document.getElementById('wx-grid');
+  WX_LOCS.forEach(loc => {
+    wxGrid.insertAdjacentHTML('beforeend', `
+      <div class="wx-card">
+        <div class="wx-city">${loc.label}</div>
+        <div id="wx-${loc.id}"><span class="wx-pend">FETCHING&#9646;</span></div>
+      </div>`);
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  //  HELPERS
+  // ─────────────────────────────────────────────────────────────
+  const pad   = n => String(n).padStart(2,'0');
+  const DAYS  = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+  function wxDesc(c) {
+    if (c===0)   return 'CLEAR SKY';
+    if (c===1)   return 'MOSTLY CLEAR';
+    if (c===2)   return 'PARTLY CLOUDY';
+    if (c===3)   return 'OVERCAST';
+    if (c<=48)   return 'FOG';
+    if (c<=55)   return 'DRIZZLE';
+    if (c<=65)   return 'RAIN';
+    if (c<=75)   return 'SNOW';
+    if (c<=77)   return 'SNOW GRAINS';
+    if (c<=82)   return 'SHOWERS';
+    if (c<=86)   return 'SNOW SHOWERS';
+    if (c<=99)   return 'THUNDERSTORM';
+    return 'UNKNOWN';
+  }
+
+  // Fetch with hard timeout — prevents hung API calls blocking indefinitely
+  async function fetchT(url, ms = 9000) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(tid);
+      return r;
+    } catch(e) {
+      clearTimeout(tid);
+      throw e.name === 'AbortError' ? new Error(`timeout after ${ms}ms`) : e;
+    }
+  }
+
+  // Strip HTML entities and tags from RSS titles
+  function sanitize(s) {
+    return s
+      .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+      .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&#x27;/g,"'")
+      .replace(/&apos;/g,"'").replace(/&nbsp;/g,' ')
+      .replace(/<[^>]+>/g,'')
+      .trim().replace(/\s+/g,' ');
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  CLOCK TICK
+  // ─────────────────────────────────────────────────────────────
+  function tick() {
+    const now = new Date();
+
+    // Zulu
+    document.getElementById('zulu-time').textContent =
+      `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}Z`;
+    document.getElementById('zulu-date').textContent =
+      `${DAYS[now.getUTCDay()]}   ${pad(now.getUTCDate())} ${MONS[now.getUTCMonth()]} ${now.getUTCFullYear()}   Z`;
+
+    // Zones
+    ZONES.forEach((z, i) => {
+      const d    = new Date(now.toLocaleString('en-US', { timeZone: z.zone }));
+      const h    = d.getHours(), m = d.getMinutes();
+      const h12  = h % 12 || 12;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      document.getElementById(`tz${i}-hm`).textContent   = `${pad(h12)}:${pad(m)} ${ampm}`;
+      document.getElementById(`tz${i}-meta`).textContent = `${DAYS[d.getDay()]} ${MONS[d.getMonth()]} ${pad(d.getDate())}`;
+    });
+
+    // Grid ref (changes each minute)
+    if (now.getUTCSeconds() === 0 || document.getElementById('corner-br').textContent === 'GRID::INIT') {
+      document.getElementById('corner-br').textContent = `GR-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}Z`;
+    }
+
+    // News refresh countdown
+    const cdEl = document.getElementById('feed-countdown');
+    if (cdEl && nextNewsRefreshAt) {
+      const rem = nextNewsRefreshAt - Date.now();
+      if (rem > 0) {
+        const m = Math.floor(rem / 60000);
+        const s = Math.floor((rem % 60000) / 1000);
+        cdEl.textContent = `— ↻ ${m}:${pad(s)}`;
+      } else {
+        cdEl.textContent = '— ↻ NOW';
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  UPTIME
+  // ─────────────────────────────────────────────────────────────
+  const t0 = Date.now();
+  function updateUptime() {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    document.getElementById('uptime').textContent =
+      `SYS::UPTIME ${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  WEATHER
+  // ─────────────────────────────────────────────────────────────
+  async function fetchWx(loc) {
+    const el = document.getElementById(`wx-${loc.id}`);
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast` +
+        `?latitude=${loc.lat}&longitude=${loc.lon}` +
+        `&current=temperature_2m,apparent_temperature,weather_code` +
+        `&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles`;
+      const r    = await fetchT(url);
+      const data = await r.json();
+      const c    = data.current;
+      const temp  = Math.round(c.temperature_2m);
+      const feels = Math.round(c.apparent_temperature);
+      const cond  = wxDesc(c.weather_code);
+      const tc    = temp >= 90 ? 'var(--amber)' : temp <= 45 ? 'var(--cyan)' : 'var(--green)';
+      el.innerHTML = `
+        <div class="wx-temp" style="color:${tc};text-shadow:0 0 10px ${tc}55">
+          ${temp}<span class="wx-unit">°F</span>
+        </div>
+        <div class="wx-cond">${cond}</div>
+        <div class="wx-feels">FEELS: ${feels}°F</div>`;
+    } catch {
+      el.innerHTML = `<span class="wx-err">NO SIGNAL</span>`;
+    }
+  }
+
+  function loadAllWx() { WX_LOCS.forEach(fetchWx); }
+
+  // ─────────────────────────────────────────────────────────────
+  //  TICKER (rAF-driven, no CSS animation so content can update)
+  // ─────────────────────────────────────────────────────────────
+  const tickerEl = document.getElementById('ticker-inner');
+  let   tickerX  = window.innerWidth;
+
+  // Start with system status items while feeds load
+  const SYS_ITEMS = [
+    'SIGNAL ACQUIRED',
+    'CLOCK SYNCHRONIZED TO UTC',
+    'WEATHER NODES ONLINE',
+    'ALL FREQUENCIES NOMINAL',
+    'GEOLOCATION LOCKED',
+    'ENCRYPTION HANDSHAKE COMPLETE',
+  ];
+
+  function buildSysHTML() {
+    return SYS_ITEMS.map(s =>
+      `<span class="ntag ntag-sys">[SYS]</span>&nbsp;${s}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`
+    ).join('');
+  }
+
+  function buildNewsHTML(items) {
+    return items.map(h =>
+      `<span class="ntag ${h.cls}">[${h.tag}]</span>&nbsp;${h.title}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`
+    ).join('');
+  }
+
+  // Set initial placeholder
+  tickerEl.innerHTML = buildSysHTML();
+
+  // rAF loop — smooth, pauses when tab hidden (fine for a clock)
+  (function animateTicker() {
+    tickerX -= TICKER_PX_PER_FRAME;
+    if (tickerX < -tickerEl.scrollWidth) {
+      tickerX = window.innerWidth;
+    }
+    tickerEl.style.transform = `translateX(${Math.round(tickerX)}px)`;
+    requestAnimationFrame(animateTicker);
+  })();
+
+  // ─────────────────────────────────────────────────────────────
+  //  LIVE NEWS — dual-proxy fetch with full error surfacing
+  // ─────────────────────────────────────────────────────────────
+
+  // Shared XML parser for raw RSS responses
+  function parseRssXml(xml) {
+    const doc   = new DOMParser().parseFromString(xml, 'text/xml');
+    // Guard against parse errors (DOMParser returns <parsererror> element)
+    if (doc.querySelector('parsererror')) throw new Error('XML parse failed');
+    const nodes = [...doc.querySelectorAll('item')].slice(0, 10);
+    if (!nodes.length) throw new Error('no <item> elements in feed');
+    return nodes.map(el => ({
+      // Google News titles sometimes have source appended after " - "; strip it
+      title: sanitize((el.querySelector('title')?.textContent || '').replace(/ - [^-]+$/, '')),
+    })).filter(h => h.title);
+  }
+
+  // Proxy 1: rss2json.com → returns JSON (fastest, has 10k/day free tier)
+  async function fetchViaRss2Json(feed) {
+    const r    = await fetchT(RSS2JSON_BASE + encodeURIComponent(feed.url), 12000);
+    if (!r.ok) throw new Error(`rss2json ${r.status}`);
+    const data = await r.json();
+    if (data.status !== 'ok') throw new Error(`rss2json bad status`);
+    if (!data.items?.length)  throw new Error('rss2json: empty');
+    return data.items.slice(0, 10).map(i => ({
+      title: sanitize(i.title.replace(/ - [^-]+$/, '')),
+    }));
+  }
+
+  // Proxy 2: allorigins.win → returns raw content, parse XML locally
+  async function fetchViaAllOrigins(feed) {
+    const r       = await fetchT(ALLORIGINS_BASE + encodeURIComponent(feed.url), 12000);
+    if (!r.ok)    throw new Error(`allorigins ${r.status}`);
+    const wrapper = await r.json();
+    if (!wrapper.contents) throw new Error('allorigins: empty');
+    return parseRssXml(wrapper.contents);
+  }
+
+  // Proxy 3: corsproxy.io → returns raw content, parse XML locally
+  async function fetchViaCorsproxy(feed) {
+    const r = await fetchT(CORSPROXY_BASE + encodeURIComponent(feed.url), 12000);
+    if (!r.ok) throw new Error(`corsproxy ${r.status}`);
+    return parseRssXml(await r.text());
+  }
+
+  async function fetchFeed(feed) {
+    const PROXIES = [fetchViaRss2Json, fetchViaAllOrigins, fetchViaCorsproxy];
+    const errors  = [];
+    for (const fn of PROXIES) {
+      try {
+        const items = await fn(feed);
+        return items.map(i => ({ tag: feed.tag, cls: feed.cls, title: i.title }));
+      } catch(e) {
+        errors.push(e.message);
+        console.warn(`[${feed.tag}] ${fn.name}: ${e.message}`);
+      }
+    }
+    throw new Error(`SIGNAL LOST (${errors.slice(-1)[0]})`);
+  }
+
+  function setFeedStatus(html) {
+    // innerHTML wrapper — all content is either our own strings or sanitized RSS titles
+    document.getElementById('feed-status').innerHTML = html;
+  }
+
+  async function loadHeadlines() {
+    fetchCount++;
+    setFeedStatus('◆ FEED: FETCHING&hellip;');
+
+    const results = await Promise.allSettled(RSS_FEEDS.map(fetchFeed));
+    const items   = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
+    const failed  = results.filter(r => r.status === 'rejected');
+
+    // Log per-feed failures with correct feed tag (by index, not indexOf)
+    results.forEach((r, i) => {
+      if (r.status === 'rejected')
+        console.error(`Feed [${RSS_FEEDS[i].tag}] failed:`, r.reason?.message);
+    });
+
+    // Always set the refresh timer so countdown shows even on partial failure
+    nextNewsRefreshAt = Date.now() + NEWS_REFRESH_MS;
+
+    if (items.length > 0) {
+      tickerEl.innerHTML = buildNewsHTML(items);
+      const now  = new Date();
+      const hhmm = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}Z`;
+      // LIVE = red (all feeds OK), PARTIAL = amber (some feeds degraded), rest = green
+      const liveWord = failed.length === 0
+        ? `<span style="color:var(--red);letter-spacing:2px">LIVE</span>`
+        : `<span style="color:var(--amber);letter-spacing:2px">PARTIAL</span>`;
+      const src = failed.length > 0
+        ? ` [${failed.length}/${RSS_FEEDS.length} FEEDS DEGRADED]` : '';
+      setFeedStatus(`◆ ${liveWord}: ${items.length} HEADLINES &mdash; ${hhmm} &mdash; FETCH #${fetchCount}${src}`);
+      if (failed.length) console.warn(`${failed.length} feeds degraded — see console.`);
+    } else {
+      // Total blackout — clean tactical message, raw error to console only
+      console.error('All news feeds failed:', results.map((r,i) =>
+        `[${RSS_FEEDS[i].tag}] ${r.reason?.message}`).join(' | '));
+      setFeedStatus(
+        `◆ <span style="color:var(--amber);letter-spacing:2px">NO SIGNAL</span>` +
+        ` &mdash; FEED ACQUISITION FAILED`
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  START
+  // ─────────────────────────────────────────────────────────────
+  tick();
+  updateUptime();
+  setInterval(() => { tick(); updateUptime(); }, 1000);
+
+  loadAllWx();
+  setInterval(loadAllWx, WX_REFRESH_MS);
+
+  // Slight delay so the clock renders first, then fetch feeds
+  setTimeout(() => {
+    loadHeadlines();
+    setInterval(loadHeadlines, NEWS_REFRESH_MS);
+  }, 800);
+  </script>
+</body>
+</html>
