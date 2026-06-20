@@ -359,7 +359,7 @@
     <div class="topbar">
       <div class="status-left">
         <span class="dot"></span>
-        TACTICAL TIME DISPLAY &mdash; ALL SYSTEMS NOMINAL
+        TACTICAL TIME DISPLAY &mdash; <span id="sys-status">ALL SYSTEMS NOMINAL</span>
         &nbsp;<span id="feed-status">&#9679; FEED: LOADING&hellip;</span><span id="feed-countdown"></span>
       </div>
       <div class="status-right">
@@ -427,7 +427,23 @@
   const NEWS_REFRESH_MS = 30 * 60 * 1000;  // 30 min — rss2json caches feeds ~1h at origin anyway
   const TICKER_PX_PER_FRAME = 1.3;
   let   nextNewsRefreshAt = null;
-  let   fetchCount = 0;  // increments every loadHeadlines call, visible in UI
+  let   fetchCount       = 0;
+  let   wxDegraded       = false;
+  let   intelFeedDegraded = false;
+
+  function updateSysStatus() {
+    const el = document.getElementById('sys-status');
+    if (!el) return;
+    if (wxDegraded && intelFeedDegraded) {
+      el.innerHTML = `<span style="color:var(--amber)">SYSTEMS DEGRADED</span>`;
+    } else if (wxDegraded) {
+      el.innerHTML = `<span style="color:var(--amber)">WEATHER DEGRADED</span>`;
+    } else if (intelFeedDegraded) {
+      el.innerHTML = `<span style="color:var(--amber)">INTEL FEED OFFLINE</span>`;
+    } else {
+      el.innerHTML = `ALL SYSTEMS NOMINAL`;
+    }
+  }
 
   // ─────────────────────────────────────────────────────────────
   //  DOM BUILD
@@ -572,12 +588,18 @@
         </div>
         <div class="wx-cond">${cond}</div>
         <div class="wx-feels">FEELS: ${feels}°F</div>`;
+      return true;
     } catch {
       el.innerHTML = `<span class="wx-err">NO SIGNAL</span>`;
+      return false;
     }
   }
 
-  function loadAllWx() { WX_LOCS.forEach(fetchWx); }
+  async function loadAllWx() {
+    const results = await Promise.all(WX_LOCS.map(fetchWx));
+    wxDegraded = results.some(r => r === false);
+    updateSysStatus();
+  }
 
   // ─────────────────────────────────────────────────────────────
   //  TICKER (rAF-driven, no CSS animation so content can update)
@@ -687,7 +709,7 @@
 
   async function loadHeadlines() {
     fetchCount++;
-    setFeedStatus('◆ FEED: FETCHING&hellip;');
+    setFeedStatus('◆ INTEL FEED: FETCHING&hellip;');
 
     const results = await Promise.allSettled(RSS_FEEDS.map(fetchFeed));
     const items   = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
@@ -699,8 +721,9 @@
         console.error(`Feed [${RSS_FEEDS[i].tag}] failed:`, r.reason?.message);
     });
 
-    // Always set the refresh timer so countdown shows even on partial failure
-    nextNewsRefreshAt = Date.now() + NEWS_REFRESH_MS;
+    nextNewsRefreshAt   = Date.now() + NEWS_REFRESH_MS;
+    intelFeedDegraded   = (items.length === 0);
+    updateSysStatus();
 
     if (items.length > 0) {
       tickerEl.innerHTML = buildNewsHTML(items);
@@ -712,15 +735,15 @@
         : `<span style="color:var(--amber);letter-spacing:2px">PARTIAL</span>`;
       const src = failed.length > 0
         ? ` [${failed.length}/${RSS_FEEDS.length} FEEDS DEGRADED]` : '';
-      setFeedStatus(`◆ ${liveWord}: ${items.length} HEADLINES &mdash; ${hhmm} &mdash; FETCH #${fetchCount}${src}`);
+      setFeedStatus(`◆ INTEL FEED ${liveWord}: ${items.length} HEADLINES &mdash; ${hhmm} &mdash; FETCH #${fetchCount}${src}`);
       if (failed.length) console.warn(`${failed.length} feeds degraded — see console.`);
     } else {
       // Total blackout — clean tactical message, raw error to console only
       console.error('All news feeds failed:', results.map((r,i) =>
         `[${RSS_FEEDS[i].tag}] ${r.reason?.message}`).join(' | '));
       setFeedStatus(
-        `◆ <span style="color:var(--amber);letter-spacing:2px">NO SIGNAL</span>` +
-        ` &mdash; FEED ACQUISITION FAILED`
+        `◆ INTEL FEED <span style="color:var(--amber);letter-spacing:2px">NO SIGNAL</span>` +
+        ` &mdash; ACQUISITION FAILED`
       );
     }
   }
