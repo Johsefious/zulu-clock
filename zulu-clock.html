@@ -32,7 +32,7 @@
       --wx-temp-size: clamp(46px, 4vw, 68px);
       --wx-city-size: clamp(13px, 0.55vw, 15px);
       --wx-sub-size:  clamp(13px, 0.55vw, 14px);
-      --wx-cols:     4;
+      --wx-cols:     8;
       --topbar-size: clamp(8px, 0.9vw, 11px);   /* topbar unchanged per user request */
       --ticker-size: clamp(13px, 0.6vw, 16px);
       --section-lbl-size: clamp(13px, 0.55vw, 15px);
@@ -62,8 +62,11 @@
     @media (max-width: 1100px) {
       :root { --tz-size: clamp(28px, 2.6vw, 38px); }
     }
+    @media (max-width: 1200px) {
+      :root { --wx-cols: 4; }
+    }
     @media (max-width: 860px) {
-      :root { --tz-cols: 3; --wx-cols: 2; --pad-h: 12px; }
+      :root { --tz-cols: 3; --wx-cols: 3; --pad-h: 12px; }
     }
     @media (max-width: 560px) {
       :root { --tz-cols: 2; --wx-cols: 2; --pad-h: 8px; }
@@ -108,6 +111,7 @@
         linear-gradient(90deg, rgba(0,255,65,0.04) 1px, transparent 1px);
       background-size: 50px 50px;
       z-index: 0;
+      pointer-events: none;
     }
 
     /* ── Shell ─── */
@@ -119,13 +123,88 @@
       height: 100vh;
       padding: var(--pad-v) var(--pad-h) calc(var(--pad-v) - 2px);
       gap: var(--gap);
+    }
+
+    /* ── Situational Awareness (left flank) ─── */
+    .sa-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0;
+      overflow: hidden;
+    }
+    .sa-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: opacity 0.48s ease;
+    }
+    .sa-item.fading { opacity: 0; }
+    .sa-symbol {
+      font-family: 'VT323', monospace;
+      font-size: 60px; /* overridden by fitSaPanel() */
+      line-height: 1;
+      filter: drop-shadow(0 0 5px rgba(0,255,65,0.2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .sa-symbol svg { height: 100%; width: auto; display: block; }
+    .sa-cat {
+      font-size: var(--tz-city-size);
+      letter-spacing: 2.5px;
+      color: rgba(0,255,65,0.42);
+      margin-top: 3px;
+    }
+    .sa-headline {
+      font-family: 'VT323', monospace;
+      font-size: clamp(16px, 1.25vw, 22px);
+      color: rgba(0,255,65,0.5);
+      letter-spacing: 1px;
+      line-height: 1.15;
+      margin-top: 4px;
+    }
+    .sa-detail {
+      font-size: var(--tz-city-size);
+      color: var(--green-dim);
+      letter-spacing: 1px;
+      line-height: 1.5;
+      margin-top: 3px;
+    }
+    .sa-dots {
+      display: flex;
+      gap: 7px;
+      justify-content: center;
+      margin-top: 6px;
+      min-height: 14px;
+    }
+    .sa-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: rgba(0,255,65,0.18);
+      transition: background 0.3s;
+    }
+    .sa-dot.active { background: rgba(0,255,65,0.7); box-shadow: 0 0 4px rgba(0,255,65,0.5); }
+    @media (max-width: 680px) { .sa-block { display: none; } }
+
+    /* Flicker lives on its own pointer-events:none overlay so .shell stays off
+       GPU compositing layers — compositor hit-testing on animated layers breaks
+       CSS :hover and pointer events in Chrome on macOS. */
+    .flicker-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: black;
       animation: screenflicker 14s infinite;
     }
 
     @keyframes screenflicker {
-      0%,88%,90.5%,93%,100% { opacity: 1; }
-      89%  { opacity: .91; }
-      91%  { opacity: .97; }
+      0%,88%,90.5%,93%,100% { opacity: 0; }
+      89%  { opacity: .09; }
+      91%  { opacity: .03; }
     }
 
     /* ── Topbar ─── */
@@ -164,10 +243,51 @@
 
     /* ── ZULU primary ─── */
     .zulu-block {
-      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(16px, 2.5vw, 44px);
       flex-shrink: 0;
-      line-height: 1;
     }
+
+    .zulu-center {
+      text-align: center;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .zulu-flank {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    /* Moon panel */
+    .moon-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    #moon-svg {
+      width: var(--zulu-size);
+      height: var(--zulu-size);
+      display: block;
+      filter: drop-shadow(0 0 6px rgba(0,255,65,0.3));
+    }
+
+    .moon-lbl {
+      font-size: var(--tz-city-size);
+      letter-spacing: 2px;
+      color: rgba(0,255,65,0.42);
+      text-align: center;
+    }
+
+    @media (max-width: 680px) { .moon-panel { display: none; } }
 
     .zulu-label {
       font-size: var(--zulu-lbl-size);
@@ -243,6 +363,13 @@
       margin-top: 1px;
     }
 
+    .tz-sun {
+      font-size: var(--tz-meta-size);
+      color: rgba(0,255,65,0.28);
+      letter-spacing: 1px;
+      margin-top: 2px;
+    }
+
     /* ── Divider ─── */
     .rule {
       border: none;
@@ -296,8 +423,13 @@
       line-height: 1;
     }
     .wx-unit { font-size: calc(var(--wx-temp-size) * 0.45); color: var(--green-dim); }
-    .wx-feels { font-size: var(--wx-sub-size); color: rgba(0,255,65,0.42); letter-spacing: 1px; margin-top: 2px; }
     .wx-cond  { font-size: var(--wx-sub-size); color: var(--green-dim); letter-spacing: 1px; margin-top: 1px; }
+    .wx-sig   { font-size: var(--wx-sub-size); letter-spacing: 1px; margin-top: 3px; line-height: 1.4; }
+    .wx-sig-heat   { color: var(--green); text-shadow: 0 0 8px rgba(0,255,65,0.5); }
+    .wx-sig-warn   { color: var(--amber); text-shadow: 0 0 8px var(--amber-dim); }
+    .wx-sig-precip { color: var(--cyan); text-shadow: 0 0 8px rgba(0,200,255,0.5); }
+    .wx-sig-sep    { color: rgba(0,255,65,0.3); }
+    .wx-sun   { font-size: var(--wx-sub-size); color: rgba(0,255,65,0.38); letter-spacing: 1px; margin-top: 2px; }
     .wx-pend  { font-size: calc(var(--wx-sub-size) * 1.1); color: var(--green-dim); animation: blink 1s step-end infinite; }
     .wx-err   { font-size: var(--wx-sub-size); color: var(--red); letter-spacing: 1px; }
 
@@ -312,6 +444,8 @@
       flex-shrink: 0;
       position: relative;
       height: clamp(16px, 2.2vh, 22px);
+      cursor: default;
+      user-select: none;
     }
 
     #ticker-inner {
@@ -330,7 +464,10 @@
     #ticker-inner .ntag-us    { color: var(--amber); }
     #ticker-inner .ntag-ca    { color: var(--cyan);  }
     #ticker-inner .ntag-sys   { color: var(--green-dim); }
+    #ticker-inner .ntag-wx    { color: var(--amber); }
     #ticker-inner .nsep { color: rgba(0,255,65,0.22); }
+
+    .news-link { color: inherit; text-decoration: none; }
 
     /* ── Corner tags ─── */
     .corner {
@@ -344,10 +481,52 @@
     .tr { top:3px; right:5px; }
     .bl { bottom:3px; left:5px; }
     .br { bottom:3px; right:5px; }
+
+    /* ── Loading screen ─── */
+    #loader {
+      position: fixed; inset: 0; z-index: 10000;
+      background: #000;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      transition: opacity 1s ease;
+    }
+    #loader.dismissed { opacity: 0; pointer-events: none; }
+    #loader-clock {
+      font-family: 'VT323', monospace;
+      font-size: var(--zulu-size);
+      color: var(--green);
+      text-shadow: 0 0 5px var(--green), 0 0 14px var(--green), 0 0 40px rgba(0,255,65,0.25);
+      letter-spacing: var(--zulu-lsp);
+      line-height: 1;
+    }
+    #loader-label {
+      font-size: clamp(8px, 0.65vw, 11px);
+      letter-spacing: 4px;
+      color: rgba(0,255,65,0.3);
+      margin-top: 6px;
+    }
+    #loader-msg {
+      font-size: 12px;
+      letter-spacing: 5px;
+      color: rgba(0,255,65,0.38);
+      margin-top: clamp(18px, 3vh, 36px);
+    }
+    #loader-msg .ld { opacity: 0; animation: ldot 1.6s infinite; }
+    #loader-msg .ld:nth-child(2) { animation-delay: .4s; }
+    #loader-msg .ld:nth-child(3) { animation-delay: .8s; }
+    @keyframes ldot { 0%,100%{opacity:0} 40%,60%{opacity:1} }
   </style>
 </head>
 <body>
+  <!-- Loading screen — dismissed once wx + news + SA all respond (max 8 s) -->
+  <div id="loader">
+    <div id="loader-clock">--:--:--Z</div>
+    <div id="loader-label">&#9668; ZULU TIME &nbsp;&bull;&nbsp; COORDINATED UNIVERSAL TIME &#9658;</div>
+    <div id="loader-msg">LOADING<span class="ld">.</span><span class="ld">.</span><span class="ld">.</span></div>
+  </div>
+
   <div class="grid-bg"></div>
+  <div class="flicker-overlay"></div>
   <div class="corner tl">CCLOCK v3.0 // ARX</div>
   <div class="corner tr">ENC:AES-256 // SECURE</div>
   <div class="corner bl">LAT:37.87N LON:122.27W</div>
@@ -369,9 +548,43 @@
 
     <!-- ZULU -->
     <div class="zulu-block">
-      <div class="zulu-label">&#9668; ZULU TIME &nbsp;&bull;&nbsp; COORDINATED UNIVERSAL TIME &#9658;</div>
-      <span id="zulu-time">--:--:--</span>
-      <div id="zulu-date">SYNCHRONIZING&hellip;</div>
+      <div class="zulu-flank">
+        <div class="sa-block">
+          <div class="sa-item" id="sa-item"></div>
+          <div class="sa-dots" id="sa-dots"></div>
+        </div>
+      </div>
+      <div class="zulu-center">
+        <div class="zulu-label">&#9668; ZULU TIME &nbsp;&bull;&nbsp; COORDINATED UNIVERSAL TIME &#9658;</div>
+        <span id="zulu-time">--:--:--</span>
+        <div id="zulu-date">SYNCHRONIZING&hellip;</div>
+      </div>
+      <div class="zulu-flank">
+        <div class="moon-panel">
+          <svg id="moon-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="mglow" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <clipPath id="moon-clip"><circle cx="50" cy="50" r="45"/></clipPath>
+              <pattern id="moon-grid" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+                <rect width="6" height="6" fill="none"/>
+                <rect width="5" height="5" fill="rgba(0,0,0,0.18)"/>
+              </pattern>
+            </defs>
+            <!-- Dark body -->
+            <circle cx="50" cy="50" r="45" fill="rgba(0,18,6,1)" stroke="rgba(0,255,65,0.18)" stroke-width="1.5"/>
+            <!-- Lit portion -->
+            <path id="moon-lit" clip-path="url(#moon-clip)" fill="rgba(0,255,65,0.22)" filter="url(#mglow)"/>
+            <!-- Pixel grid overlay for block aesthetic -->
+            <circle cx="50" cy="50" r="45" fill="url(#moon-grid)" clip-path="url(#moon-clip)"/>
+            <!-- Outer ring glow -->
+            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,255,65,0.12)" stroke-width="3"/>
+          </svg>
+          <div id="moon-lbl" class="moon-lbl"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Timezones (5 cities, Portland removed) -->
@@ -394,21 +607,59 @@
 
   <script>
   // ─────────────────────────────────────────────────────────────
+  //  LOADER
+  // ─────────────────────────────────────────────────────────────
+  (function() {
+    const LOAD_MAX_MS = 8000;
+    const done = { wx: false, news: false, sa: false };
+    const loaderEl = document.getElementById('loader');
+    const clockEl  = document.getElementById('loader-clock');
+
+    function dismiss() {
+      if (!loaderEl || loaderEl.classList.contains('dismissed')) return;
+      loaderEl.classList.add('dismissed');
+      setTimeout(() => loaderEl && loaderEl.remove(), 1100);
+    }
+
+    // Expose mark functions on window so fetch wrappers can call them
+    window._loaderMark = function(key) {
+      done[key] = true;
+      if (done.wx && done.news && done.sa) dismiss();
+    };
+
+    // Keep the loader clock ticking live
+    function tick() {
+      if (!clockEl) return;
+      const n = new Date();
+      const p = v => String(v).padStart(2,'0');
+      clockEl.textContent = `${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())}Z`;
+      setTimeout(tick, 1000 - n.getUTCMilliseconds() % 1000);
+    }
+    tick();
+
+    setTimeout(dismiss, LOAD_MAX_MS); // hard ceiling
+  })();
+
+  // ─────────────────────────────────────────────────────────────
   //  CONFIG
   // ─────────────────────────────────────────────────────────────
   const ZONES = [
-    { city:'LOS ANGELES', zone:'America/Los_Angeles' },
-    { city:'DENVER',      zone:'America/Denver'      },
-    { city:'CHICAGO',     zone:'America/Chicago'     },
-    { city:'NEW YORK',    zone:'America/New_York'    },
-    { city:'LONDON',      zone:'Europe/London'       },
+    { city:'LOS ANGELES', zone:'America/Los_Angeles', lat:34.0522, lon:-118.2437 },
+    { city:'DENVER',      zone:'America/Denver',      lat:39.7392, lon:-104.9903 },
+    { city:'CHICAGO',     zone:'America/Chicago',     lat:41.8781, lon:-87.6298  },
+    { city:'NEW YORK',    zone:'America/New_York',    lat:40.7128, lon:-74.0060  },
+    { city:'LONDON',      zone:'Europe/London',       lat:51.5074, lon:-0.1278   },
   ];
 
   const WX_LOCS = [
-    { id:'berkeley', label:'BERKELEY',    lat:37.8716, lon:-122.2727 },
-    { id:'fresno',   label:'FRESNO',      lat:36.7378, lon:-119.7871 },
-    { id:'tulare',   label:'TULARE',      lat:36.2077, lon:-119.3473 },
-    { id:'la',       label:'LOS ANGELES', lat:34.0522, lon:-118.2437 },
+    { id:'berkeley',    label:'BERKELEY',    lat:37.8716, lon:-122.2727, metar:'KOAK' },
+    { id:'turlock',     label:'TURLOCK',     lat:37.4947, lon:-120.8466, metar:'KMOD' },
+    { id:'fresno',      label:'FRESNO',      lat:36.7378, lon:-119.7871, metar:'KFAT' },
+    { id:'tulare',      label:'TULARE',      lat:36.2077, lon:-119.3473, metar:'KTLR' },
+    { id:'bakersfield', label:'BAKERSFIELD', lat:35.3733, lon:-119.0187, metar:'KBFL' },
+    { id:'la',          label:'LOS ANGELES', lat:34.0522, lon:-118.2437, metar:'KLAX' },
+    { id:'chino',       label:'CHINO',       lat:34.0122, lon:-117.6889, metar:'KCNO' },
+    { id:'sandiego',    label:'SAN DIEGO',   lat:32.7157, lon:-117.1611, metar:'KSAN' },
   ];
 
   // RSS headlines — two proxy layers for resilience:
@@ -424,22 +675,36 @@
   const ALLORIGINS_BASE = 'https://api.allorigins.win/get?url=';
   const CORSPROXY_BASE  = 'https://corsproxy.io/?';
   const WX_REFRESH_MS   = 20 * 60 * 1000;
-  const NEWS_REFRESH_MS = 15 * 60 * 1000;  // 15 min — matches Google News RSS update cadence
+  const NEWS_REFRESH_MS = 5  * 60 * 1000;
+  const SA_REFRESH_MS   = 4  * 60 * 1000;  // sit-aware: 4 min
+  const SA_DWELL_MS     = 3500;             // ms per alert card before cycling
   const TICKER_PX_PER_FRAME = 1.3;
   let   nextNewsRefreshAt = null;
   let   fetchCount       = 0;
   let   wxDegraded       = false;
   let   intelFeedDegraded = false;
+  let   sunsetDegraded   = false;
+  let   wxAlerts         = [];
+  let   currentHeadlines = [];
+  let   saDegraded       = false;
+  let   saAlerts         = [];
+  let   saIdx            = 0;
+  let   saCycleTmr       = null;
 
   function updateSysStatus() {
     const el = document.getElementById('sys-status');
     if (!el) return;
-    if (wxDegraded && intelFeedDegraded) {
+    const degraded = [wxDegraded, intelFeedDegraded, sunsetDegraded, saDegraded].filter(Boolean).length;
+    if (degraded >= 2) {
       el.innerHTML = `<span style="color:var(--amber)">SYSTEMS DEGRADED</span>`;
     } else if (wxDegraded) {
       el.innerHTML = `<span style="color:var(--amber)">WEATHER DEGRADED</span>`;
     } else if (intelFeedDegraded) {
       el.innerHTML = `<span style="color:var(--amber)">INTEL FEED OFFLINE</span>`;
+    } else if (sunsetDegraded) {
+      el.innerHTML = `<span style="color:var(--amber)">SOLAR DATA OFFLINE</span>`;
+    } else if (saDegraded) {
+      el.innerHTML = `<span style="color:var(--amber)">SIT AWARE DEGRADED</span>`;
     } else {
       el.innerHTML = `ALL SYSTEMS NOMINAL`;
     }
@@ -455,6 +720,7 @@
         <div class="tz-city">${z.city}</div>
         <div class="tz-hm"  id="tz${i}-hm">--:--</div>
         <div class="tz-meta" id="tz${i}-meta">--- -- --</div>
+        <div class="tz-sun"  id="tz${i}-sun"></div>
       </div>`);
   });
 
@@ -473,6 +739,130 @@
   const pad   = n => String(n).padStart(2,'0');
   const DAYS  = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+  function formatSunTime(iso) {
+    const t = iso.split('T')[1];
+    if (!t) return null;
+    let [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${pad(m)} ${ampm}`;
+  }
+
+  function parseSunMin(iso) {
+    const t = iso.split('T')[1];
+    if (!t) return 0;
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  // Cache sunrise/sunset data per zone so display can update without re-fetching
+  const solarCache = {};
+
+  function updateSolarDisplay() {
+    ZONES.forEach((z, i) => {
+      const cache = solarCache[z.zone];
+      const el    = document.getElementById(`tz${i}-sun`);
+      if (!el || !cache) return;
+      const local  = new Date(new Date().toLocaleString('en-US', { timeZone: z.zone }));
+      const nowMin = local.getHours() * 60 + local.getMinutes();
+      let arrow, label, timeStr;
+      if (nowMin < cache.riseMin) {
+        arrow = '▲'; label = 'SUNRISE'; timeStr = cache.riseStr;
+      } else if (nowMin < cache.setMin) {
+        arrow = '▼'; label = 'SUNSET';  timeStr = cache.setStr;
+      } else {
+        arrow = '▲'; label = 'SUNRISE'; timeStr = cache.rise2Str || cache.riseStr;
+      }
+      el.textContent = `${arrow} ${label} ${timeStr}`;
+    });
+  }
+
+  function getMoonPhaseData() {
+    const now   = new Date();
+    const ref   = new Date(Date.UTC(2000, 0, 6, 18, 14));
+    const CYCLE = 29.53058867;
+    const phase = (((now - ref) / 86400000) % CYCLE + CYCLE) % CYCLE;
+    const illum = Math.round((1 - Math.cos(2 * Math.PI * phase / CYCLE)) / 2 * 100);
+    let name;
+    if      (phase <  1.85) name = 'NEW MOON';
+    else if (phase <  7.38) name = 'WAXING CRESCENT';
+    else if (phase <  9.22) name = 'FIRST QUARTER';
+    else if (phase < 14.77) name = 'WAXING GIBBOUS';
+    else if (phase < 16.61) name = 'FULL MOON';
+    else if (phase < 22.15) name = 'WANING GIBBOUS';
+    else if (phase < 23.99) name = 'LAST QUARTER';
+    else                    name = 'WANING CRESCENT';
+    return { phase, name, illum };
+  }
+
+  // Returns SVG path `d` for the lit portion of the moon.
+  // t = phase / CYCLE (0=new, 0.5=full, 1=new again)
+  function moonPathD(cx, cy, R, t) {
+    const angle = 2 * Math.PI * t;
+    const waning = t > 0.5;
+    const f = v => v.toFixed(3);
+    if (!waning) {
+      const tx = Math.cos(angle) * R;
+      if (tx >= 0) {
+        // Waxing crescent: right limb + left-curving terminator
+        return `M ${cx} ${cy-R} A ${R} ${R} 0 0 1 ${cx} ${cy+R} A ${f(tx)} ${R} 0 0 0 ${cx} ${cy-R} Z`;
+      } else {
+        // Waxing gibbous: right limb + right-curving terminator
+        return `M ${cx} ${cy-R} A ${R} ${R} 0 0 1 ${cx} ${cy+R} A ${f(-tx)} ${R} 0 0 1 ${cx} ${cy-R} Z`;
+      }
+    } else {
+      const tl = t - 0.5;
+      const tx = Math.cos(2 * Math.PI * tl) * R;
+      if (tx >= 0) {
+        // Waning gibbous: left limb + right-curving terminator
+        return `M ${cx} ${cy-R} A ${R} ${R} 0 0 0 ${cx} ${cy+R} A ${f(tx)} ${R} 0 0 1 ${cx} ${cy-R} Z`;
+      } else {
+        // Waning crescent: left limb + left-curving terminator
+        return `M ${cx} ${cy-R} A ${R} ${R} 0 0 0 ${cx} ${cy+R} A ${f(-tx)} ${R} 0 0 0 ${cx} ${cy-R} Z`;
+      }
+    }
+  }
+
+  function drawMoon() {
+    const { phase, name, illum } = getMoonPhaseData();
+    const CYCLE = 29.53058867;
+    const t = phase / CYCLE;
+    const litEl  = document.getElementById('moon-lit');
+    const lblEl  = document.getElementById('moon-lbl');
+    if (!litEl) return;
+    const cx = 50, cy = 50, R = 45;
+    // Near new moon: essentially nothing lit
+    const d = (t < 0.005 || t > 0.995) ? '' : moonPathD(cx, cy, R, t);
+    litEl.setAttribute('d', d);
+    if (lblEl) lblEl.textContent = `${name}  ${illum}%`;
+  }
+
+  async function fetchAllSunsets() {
+    const results = await Promise.all(ZONES.map(async (z) => {
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast` +
+          `?latitude=${z.lat}&longitude=${z.lon}` +
+          `&daily=sunrise,sunset&forecast_days=2&timezone=${encodeURIComponent(z.zone)}`;
+        const r    = await fetchT(url, 9000);
+        const data = await r.json();
+        const rises = data.daily?.sunrise;
+        const sets  = data.daily?.sunset;
+        if (!rises?.length || !sets?.length) return false;
+        solarCache[z.zone] = {
+          riseMin:  parseSunMin(rises[0]),
+          setMin:   parseSunMin(sets[0]),
+          riseStr:  formatSunTime(rises[0]),
+          setStr:   formatSunTime(sets[0]),
+          rise2Str: rises[1] ? formatSunTime(rises[1]) : null,
+        };
+        return true;
+      } catch { return false; }
+    }));
+    sunsetDegraded = results.some(r => r === false);
+    updateSolarDisplay();
+    updateSysStatus();
+  }
 
   function wxDesc(c) {
     if (c===0)   return 'CLEAR SKY';
@@ -536,6 +926,9 @@
       document.getElementById(`tz${i}-meta`).textContent = `${DAYS[d.getDay()]} ${MONS[d.getMonth()]} ${pad(d.getDate())}`;
     });
 
+    // Solar display flips when sunrise/sunset passes — check once per minute
+    if (now.getUTCSeconds() === 0) updateSolarDisplay();
+
     // Grid ref (changes each minute)
     if (now.getUTCSeconds() === 0 || document.getElementById('corner-br').textContent === 'GRID::INIT') {
       document.getElementById('corner-br').textContent = `GR-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}Z`;
@@ -568,46 +961,172 @@
   // ─────────────────────────────────────────────────────────────
   //  WEATHER
   // ─────────────────────────────────────────────────────────────
-  async function fetchWx(loc) {
+  async function fetchMetar() {
+    try {
+      const ids = WX_LOCS.map(l => l.metar).join(',');
+      const r   = await fetchT(
+        `https://aviationweather.gov/api/data/metar?ids=${ids}&format=json`, 10000);
+      const arr = await r.json();
+      const map = {};
+      arr.forEach(m => { map[m.icaoId] = m; });
+      return map;
+    } catch {
+      return {};
+    }
+  }
+
+  async function fetchWx(loc, metarMap) {
     const el = document.getElementById(`wx-${loc.id}`);
     try {
       const url = `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${loc.lat}&longitude=${loc.lon}` +
-        `&current=temperature_2m,apparent_temperature,weather_code` +
-        `&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles`;
+        `&current=temperature_2m,weather_code,wind_speed_10m,precipitation` +
+        `&hourly=temperature_2m,wind_speed_10m,precipitation` +
+        `&temperature_unit=fahrenheit&wind_speed_unit=mph` +
+        `&forecast_days=2&timezone=America%2FLos_Angeles`;
       const r    = await fetchT(url);
       const data = await r.json();
       const c    = data.current;
-      const temp  = Math.round(c.temperature_2m);
-      const feels = Math.round(c.apparent_temperature);
-      const cond  = wxDesc(c.weather_code);
-      const tc    = temp >= 90 ? 'var(--amber)' : temp <= 45 ? 'var(--cyan)' : 'var(--green)';
+      const temp = Math.round(c.temperature_2m);
+      const cond = wxDesc(c.weather_code);
+      const tc   = temp >= 90 ? 'var(--amber)' : temp <= 45 ? 'var(--cyan)' : 'var(--green)';
+
+      // METAR visibility: statute miles → metres. 0/missing = null.
+      const metar     = (metarMap || {})[loc.metar] || {};
+      const metarVisM = (metar.visib > 0) ? metar.visib * 1609.34 : null;
+      const metarLow  = metarVisM !== null && metarVisM < 4828;
+
+      // Find current hour slot in Open-Meteo hourly array
+      const hTimes = data.hourly.time;
+      const now    = new Date();
+      const nowMs  = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours()).getTime();
+      let startIdx = 0;
+      for (let i = 0; i < hTimes.length; i++) {
+        const [dp, tp]     = hTimes[i].split('T');
+        const [yr, mo, dy] = dp.split('-').map(Number);
+        const [hr]         = tp.split(':').map(Number);
+        if (new Date(yr, mo - 1, dy, hr).getTime() >= nowMs) { startIdx = i; break; }
+      }
+      const endIdx = Math.min(startIdx + 12, hTimes.length);
+
+      // Find first consecutive run above threshold in an hourly array slice.
+      // Returns { onset: hours from now, duration: consecutive hours in run, peak: max value in run }
+      function firstRun(arr, thresh) {
+        for (let i = startIdx; i < endIdx; i++) {
+          const v = arr[i] || 0;
+          if (v > thresh) {
+            let j = i, pk = v;
+            while (j < endIdx && (arr[j] || 0) > thresh) { pk = Math.max(pk, arr[j] || 0); j++; }
+            return { onset: i - startIdx, duration: j - i, peak: pk };
+          }
+        }
+        return null;
+      }
+
+      function hrLabel(n) { return n === 1 ? '1 HOUR' : `${n} HOURS`; }
+
+      const windRun   = firstRun(data.hourly.wind_speed_10m, 10);
+      const heatRun   = firstRun(data.hourly.temperature_2m, 98);
+      const precipRun = firstRun(data.hourly.precipitation,   0);
+
+      const curWind  = Math.round(c.wind_speed_10m || 0);
+      const curPrec  = c.precipitation || 0;
+
+      // Build card badges + alert objects for ticker
+      const sigs   = [];
+      const alerts = [];
+
+      // HEAT
+      if (heatRun || temp > 98) {
+        let val, tl;
+        if (heatRun && heatRun.onset === 0) {
+          val = Math.round(Math.max(temp, heatRun.peak));
+          tl  = `FOR ${hrLabel(heatRun.duration)}`;
+        } else if (temp > 98) {
+          val = temp; tl = 'NOW';
+        } else {
+          val = Math.round(heatRun.peak);
+          tl  = `IN ${hrLabel(heatRun.onset)}`;
+        }
+        sigs.push(`<span class="wx-sig-heat"><svg xmlns="http://www.w3.org/2000/svg" width="8" height="16" viewBox="0 0 8 16" style="display:inline-block;vertical-align:-3px;margin-right:2px"><rect x="2.5" y="0" width="3" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="3.2" y="2" width="1.6" height="8" fill="currentColor"/><circle cx="4" cy="13" r="2.8" fill="currentColor"/></svg>HEAT ${val}&deg;</span>`);
+        alerts.push({ type:'HEAT', value:`${val}°F`, timeLabel: tl });
+      }
+
+      // WIND
+      if (windRun || curWind > 10) {
+        let val, tl;
+        if (windRun && windRun.onset === 0) {
+          val = Math.round(Math.max(curWind, windRun.peak));
+          tl  = `FOR ${hrLabel(windRun.duration)}`;
+        } else if (curWind > 10) {
+          val = curWind; tl = 'NOW';
+        } else {
+          val = Math.round(windRun.peak);
+          tl  = `IN ${hrLabel(windRun.onset)}`;
+        }
+        sigs.push(`<span class="wx-sig-warn">WIND ${val}MPH</span>`);
+        alerts.push({ type:'WIND', value:`${val}MPH`, timeLabel: tl });
+      }
+
+      // PRECIP
+      if (precipRun || curPrec > 0) {
+        let tl;
+        if (precipRun && precipRun.onset === 0) {
+          tl = `FOR ${hrLabel(precipRun.duration)}`;
+        } else if (curPrec > 0) {
+          tl = 'NOW';
+        } else {
+          tl = `IN ${hrLabel(precipRun.onset)}`;
+        }
+        sigs.push(`<span class="wx-sig-precip">PRECIP</span>`);
+        alerts.push({ type:'PRECIP', value:'', timeLabel: tl });
+      }
+
+      // VIS — METAR only, observed value, no forecast duration
+      if (metarLow) {
+        const visMi = (metarVisM / 1609.34).toFixed(1);
+        sigs.push(`<span class="wx-sig-warn">VIS ${visMi}MI</span>`);
+        alerts.push({ type:'VIS', value:`${visMi}MI`, timeLabel: 'OBSERVED' });
+      }
+
+      const sigHtml = sigs.length
+        ? `<div class="wx-sig">${sigs.join('<span class="wx-sig-sep"> &middot; </span>')}</div>`
+        : '';
+
       el.innerHTML = `
         <div class="wx-temp" style="color:${tc};text-shadow:0 0 10px ${tc}55">
-          ${temp}<span class="wx-unit">°F</span>
+          ${temp}<span class="wx-unit">&deg;F</span>
         </div>
         <div class="wx-cond">${cond}</div>
-        <div class="wx-feels">FEELS: ${feels}°F</div>`;
-      return true;
+        ${sigHtml}`;
+
+      return { ok: true, alerts: alerts.map(a => ({ city: loc.label, ...a })) };
     } catch {
       el.innerHTML = `<span class="wx-err">NO SIGNAL</span>`;
-      return false;
+      return { ok: false, alerts: [] };
     }
   }
 
   async function loadAllWx() {
-    const results = await Promise.all(WX_LOCS.map(fetchWx));
-    wxDegraded = results.some(r => r === false);
+    const metarMap = await fetchMetar();
+    const results  = await Promise.all(WX_LOCS.map(loc => fetchWx(loc, metarMap)));
+    wxDegraded     = results.some(r => !r.ok);
+    wxAlerts       = results.flatMap(r => r.alerts);
+    rebuildTicker();
     updateSysStatus();
+    window._loaderMark && window._loaderMark('wx');
   }
 
   // ─────────────────────────────────────────────────────────────
   //  TICKER (rAF-driven, no CSS animation so content can update)
   // ─────────────────────────────────────────────────────────────
-  const tickerEl = document.getElementById('ticker-inner');
-  let   tickerX  = window.innerWidth;
+  const tickerEl   = document.getElementById('ticker-inner');
+  const tickerWrap = document.querySelector('.ticker');
+  let   tickerX        = window.innerWidth;
+  let   tickerPaused   = false;
+  let   tickerVelocity = 0;              // eases from 0 → TICKER_PX_PER_FRAME on resume
+  let   tickerResumeTimer = null;
 
-  // Start with system status items while feeds load
   const SYS_ITEMS = [
     'SIGNAL ACQUIRED',
     'CLOCK SYNCHRONIZED TO UTC',
@@ -624,19 +1143,67 @@
   }
 
   function buildNewsHTML(items) {
-    return items.map(h =>
-      `<span class="ntag ${h.cls}">[${h.tag}]</span>&nbsp;${h.title}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`
-    ).join('');
+    return items.map(h => {
+      const title = h.url
+        ? `<a class="news-link" href="${h.url}" target="_blank" rel="noopener noreferrer">${h.title}</a>`
+        : h.title;
+      return `<span class="ntag ${h.cls}">[${h.tag}]</span>&nbsp;${title}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`;
+    }).join('');
   }
 
-  // Set initial placeholder
-  tickerEl.innerHTML = buildSysHTML();
+  function buildWxAlertHTML(alerts) {
+    if (!alerts.length) return '';
+    const seen = [], byCity = {};
+    alerts.forEach(a => {
+      if (!byCity[a.city]) { byCity[a.city] = []; seen.push(a.city); }
+      byCity[a.city].push(a);
+    });
+    return seen.map(city => {
+      const parts = byCity[city].map(a => {
+        const val = a.value     ? ` ${a.value}`     : '';
+        const tl  = a.timeLabel ? ` ${a.timeLabel}` : '';
+        return `${a.type}${val}${tl}`;
+      }).join(' &middot; ');
+      return `<span class="ntag ntag-wx">[WX]</span>&nbsp;${city}: ${parts}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`;
+    }).join('');
+  }
 
-  // rAF loop — smooth, pauses when tab hidden (fine for a clock)
+  function buildSaTickerHTML(alerts) {
+    if (!alerts.length) return '';
+    return alerts.map(a => {
+      return `<span class="ntag" style="color:var(--green)">[SA]</span>&nbsp;${a.cat}: ${a.headline}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`;
+    }).join('');
+  }
+
+  function rebuildTicker() {
+    const saHtml   = buildSaTickerHTML(saAlerts);
+    const wxHtml   = buildWxAlertHTML(wxAlerts);
+    const newsHtml = currentHeadlines.length
+      ? buildNewsHTML(currentHeadlines)
+      : buildSysHTML();
+    tickerEl.innerHTML = saHtml + wxHtml + newsHtml;
+  }
+
+  tickerWrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    tickerX -= delta * 2.5;
+    tickerX  = Math.min(window.innerWidth, tickerX);
+    tickerPaused = true;
+    clearTimeout(tickerResumeTimer);
+    tickerResumeTimer = setTimeout(() => { tickerPaused = false; }, 1500);
+  }, { passive: false });
+
+  rebuildTicker();
+
+  // rAF loop — velocity lerps from 0 → full speed on resume (acute ease-in)
   (function animateTicker() {
-    tickerX -= TICKER_PX_PER_FRAME;
-    if (tickerX < -tickerEl.scrollWidth) {
-      tickerX = window.innerWidth;
+    if (!tickerPaused) {
+      tickerVelocity += (TICKER_PX_PER_FRAME - tickerVelocity) * 0.1;
+      tickerX -= tickerVelocity;
+      if (tickerX < -tickerEl.scrollWidth) tickerX = window.innerWidth;
+    } else {
+      tickerVelocity = 0;
     }
     tickerEl.style.transform = `translateX(${Math.round(tickerX)}px)`;
     requestAnimationFrame(animateTicker);
@@ -654,8 +1221,8 @@
     const nodes = [...doc.querySelectorAll('item')].slice(0, 10);
     if (!nodes.length) throw new Error('no <item> elements in feed');
     return nodes.map(el => ({
-      // Google News titles sometimes have source appended after " - "; strip it
       title: sanitize((el.querySelector('title')?.textContent || '').replace(/ - [^-]+$/, '')),
+      url:   el.querySelector('link')?.textContent?.trim() || '',
     })).filter(h => h.title);
   }
 
@@ -668,6 +1235,7 @@
     if (!data.items?.length)  throw new Error('rss2json: empty');
     return data.items.slice(0, 10).map(i => ({
       title: sanitize(i.title.replace(/ - [^-]+$/, '')),
+      url:   i.link || '',
     }));
   }
 
@@ -693,7 +1261,7 @@
     for (const fn of PROXIES) {
       try {
         const items = await fn(feed);
-        return items.map(i => ({ tag: feed.tag, cls: feed.cls, title: i.title }));
+        return items.map(i => ({ tag: feed.tag, cls: feed.cls, title: i.title, url: i.url }));
       } catch(e) {
         errors.push(e.message);
         console.warn(`[${feed.tag}] ${fn.name}: ${e.message}`);
@@ -726,7 +1294,8 @@
     updateSysStatus();
 
     if (items.length > 0) {
-      tickerEl.innerHTML = buildNewsHTML(items);
+      currentHeadlines = items;
+      rebuildTicker();
       const now  = new Date();
       const hhmm = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}Z`;
       // LIVE = red (all feeds OK), PARTIAL = amber (some feeds degraded), rest = green
@@ -746,6 +1315,262 @@
         ` &mdash; ACQUISITION FAILED`
       );
     }
+    window._loaderMark && window._loaderMark('news');
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  SITUATIONAL AWARENESS
+  // ─────────────────────────────────────────────────────────────
+  // CA bounding box for quake filtering
+  const CA_LAT = [32.4, 42.1], CA_LON = [-124.6, -114.0];
+
+  function saHrLabel(n) { return n === 1 ? '1 HOUR' : `${n} HOURS`; }
+
+  // Tactical thermometer — tube + bilateral scale marks + mercury fill + bulb
+  const THERMO_SA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"><path d="M19,72 L19,11 A6,6,0,0,0,31,11 L31,72"/><rect x="21" y="35" width="8" height="37" fill="currentColor" stroke="none"/><line x1="13" y1="35" x2="37" y2="35" stroke-width="1.5"/><line x1="19" y1="15" x2="10" y2="15"/><line x1="19" y1="35" x2="10" y2="35"/><line x1="19" y1="55" x2="10" y2="55"/><line x1="19" y1="25" x2="14" y2="25" stroke-width="1.2"/><line x1="19" y1="45" x2="14" y2="45" stroke-width="1.2"/><line x1="19" y1="65" x2="14" y2="65" stroke-width="1.2"/><line x1="31" y1="15" x2="40" y2="15"/><line x1="31" y1="35" x2="40" y2="35"/><line x1="31" y1="55" x2="40" y2="55"/><line x1="31" y1="25" x2="36" y2="25" stroke-width="1.2"/><line x1="31" y1="45" x2="36" y2="45" stroke-width="1.2"/><line x1="31" y1="65" x2="36" y2="65" stroke-width="1.2"/><circle cx="25" cy="85" r="13"/><circle cx="25" cy="85" r="9" fill="currentColor" stroke="none"/></svg>`;
+
+  // 2-armed hurricane spiral — filled tapered shapes.
+  // Each arm: thick root where it meets the eye (r≈10), tapering to a sharp tip at the outer
+  // edge (r≈42). Arms sweep 270° CCW. Width = 18 at root, 0 at tip.
+  // Outer edge: spiral from r=28 (top) outward to tip. Inner edge: r=10 to same tip.
+  // Bezier CPs: 0.552 × avg-radius × tangent-direction at each quarter-turn node.
+  // Arm 2 is (x,y)→(100-x,100-y) symmetric — thick at bottom, tip at left.
+  const SPIRAL_SA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" stroke="none"><path d="M50,28 C36,28 21,36 21,50 C21,68 32,86 50,86 C70,86 92,73 92,50 C92,70 70,79 50,79 C38,79 35,62 35,50 C35,43 43,40 50,40 C60,40 60,28 50,28 Z"/><path d="M50,72 C64,72 79,64 79,50 C79,32 68,14 50,14 C30,14 8,27 8,50 C8,30 30,21 50,21 C62,21 65,38 65,50 C65,57 57,60 50,60 C40,60 40,72 50,72 Z"/></svg>`;
+
+
+  async function saFetchSeismic() {
+    try {
+      const r    = await fetchT('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson', 10000);
+      const data = await r.json();
+      const ca   = data.features.filter(f => {
+        const [lon, lat] = f.geometry.coordinates;
+        return lat >= CA_LAT[0] && lat <= CA_LAT[1] && lon >= CA_LON[0] && lon <= CA_LON[1];
+      });
+      if (!ca.length) return [];
+      ca.sort((a, b) => b.properties.mag - a.properties.mag);
+      const q   = ca[0];
+      const mag = q.properties.mag;
+      if (mag < 3.5) return [];
+      const place   = (q.properties.place || 'CALIFORNIA').toUpperCase().replace(/^\d+KM \w+ OF /,'');
+      const minsAgo = Math.round((Date.now() - q.properties.time) / 60000);
+      const depth   = Math.round(q.geometry.coordinates[2]);
+      const timeStr = minsAgo < 60 ? `${minsAgo}MIN AGO` : `${Math.round(minsAgo/60)}HR AGO`;
+      const sev     = mag >= 6.5 ? 4 : mag >= 5.5 ? 3 : mag >= 4.5 ? 2 : 1;
+      return [{ symbol:'≈', cat:'SEISMIC', headline:`M${mag.toFixed(1)} · ${place}`, detail:`${timeStr} · DEPTH ${depth}KM`, sev }];
+    } catch { return []; }
+  }
+
+  async function saFetchNwsAlerts() {
+    try {
+      const r    = await fetchT('https://api.weather.gov/alerts/active?area=CA', 10000);
+      const data = await r.json();
+      const hits  = (data.features || []).filter(f =>
+        f.properties.severity === 'Extreme' || f.properties.severity === 'Severe');
+      if (!hits.length) return [];
+      const types   = [...new Set(hits.map(f => f.properties.event))];
+      const sev     = hits.some(f => f.properties.severity === 'Extreme') ? 4 : 3;
+      const count   = hits.length;
+      const isHeat  = types.some(t => /heat/i.test(t));
+      const sym     = isHeat ? THERMO_SA_SVG : '⚑';
+      const rawArea = hits[0].properties.areaDesc || '';
+      const area    = rawArea.split(';')[0].replace(/ County$/i,'').replace(/ counties$/i,'').trim().toUpperCase().substring(0, 22) || 'CA';
+      return [{ symbol: sym, cat:'CA ALERT', headline: types[0].toUpperCase(), detail:`${area} · ${count} ALERT${count > 1 ? 'S' : ''} · NWS`, sev }];
+    } catch { return []; }
+  }
+
+  async function saFetchStorms() {
+    try {
+      const r     = await fetchT('https://www.nhc.noaa.gov/CurrentStorms.json', 10000);
+      const data  = await r.json();
+      const storms = data.activeStorms || [];
+      if (!storms.length) return [];
+      return storms.map(s => {
+        const kt      = parseInt(s.intensity) || 0;
+        const type    = kt >= 137 ? 'CAT 5 HURRICANE' : kt >= 113 ? 'CAT 4 HURRICANE' : kt >= 96 ? 'CAT 3 HURRICANE' : kt >= 83 ? 'CAT 2 HURRICANE' : kt >= 64 ? 'CAT 1 HURRICANE' : kt >= 34 ? 'TROPICAL STORM' : 'TROPICAL DEPRESSION';
+        const sev     = kt >= 96 ? 4 : kt >= 64 ? 3 : 2;
+        const latStr  = s.latitude || s.lat || '';
+        const lonStr  = s.longitude || s.lon || '';
+        const lat     = parseFloat(latStr) * (String(latStr).endsWith('S') ? -1 : 1);
+        const lon     = parseFloat(lonStr) * (String(lonStr).endsWith('W') ? -1 : 1);
+        let region    = (s.basin || '').toUpperCase() === 'EP' ? 'E PACIFIC' : 'ATLANTIC';
+        if (!isNaN(lat) && !isNaN(lon)) {
+          if (lat > 20 && lat < 32 && lon > -98 && lon < -82)       region = 'GULF OF MEXICO';
+          else if (lat > 8 && lat < 24 && lon > -88 && lon < -60)   region = 'CARIBBEAN';
+          else if (lon < -100)                                        region = 'E PACIFIC';
+        }
+        return { symbol: SPIRAL_SA_SVG, cat:'TROPICAL', headline:`${(s.name||'UNNAMED').toUpperCase()} · ${type}`, detail:`${kt}KT · ${region}`, sev };
+      });
+    } catch { return []; }
+  }
+
+  async function saFetchEonet() {
+    try {
+      const r    = await fetchT('https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=25', 10000);
+      const data = await r.json();
+      // Wildfires handled by saFetchCAWildfires (NIFC); EONET covers other global events
+      const WANT = { 'Volcanoes':3, 'Severe Storms':2, 'Floods':2 };
+      const hits = (data.events || []).filter(e =>
+        e.categories.some(c => WANT[c.title] !== undefined)
+      );
+      if (!hits.length) return [];
+      return hits.slice(0, 3).map(e => {
+        const cat  = e.categories[0].title;
+        const sev  = WANT[cat] || 2;
+        const sym  = cat === 'Volcanoes' ? '▲' : SPIRAL_SA_SVG;
+        return { symbol: sym, cat: cat.toUpperCase(), headline: e.title.toUpperCase(), detail: 'NASA EONET · OPEN EVENT', sev };
+      });
+    } catch { return []; }
+  }
+
+  async function saFetchCAWildfires() {
+    try {
+      const where = encodeURIComponent(
+        "POOState='US-CA' AND IncidentTypeCategory='WF' AND DiscoveryAcres>=10"
+      );
+      const url = 'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/' +
+        'WFIGS_Incident_Locations_Current/FeatureServer/0/query' +
+        `?where=${where}&outFields=IncidentName,DiscoveryAcres,PercentContained,POOCounty` +
+        '&orderByFields=DiscoveryAcres+DESC&resultRecordCount=5&f=json';
+      const r    = await fetchT(url, 10000);
+      const data = await r.json();
+      if (data.error) return [];
+      const fires = (data.features || []).map(f => f.attributes).filter(f => f.IncidentName);
+      if (!fires.length) return [];
+      return fires.map(f => {
+        const name   = (f.IncidentName || 'UNKNOWN').toUpperCase().replace(/ FIRE$/, '').trim();
+        const acres  = Math.round(f.DiscoveryAcres || 0);
+        const pct    = f.PercentContained;
+        const county = (f.POOCounty || '').toUpperCase();
+        const sev    = acres >= 10000 ? 3 : 2;
+        const tag    = (pct === null || pct === undefined) ? 'ACTIVE' : pct === 0 ? 'UNCONTAINED' : `${pct}% CONTAINED`;
+        return { symbol:'∧', cat:'CA WILDFIRE', headline:`${name} FIRE`, detail:`${acres.toLocaleString()} AC · ${county} CTY · ${tag}`, sev };
+      });
+    } catch { return []; }
+  }
+
+  async function saFetchHealth() {
+    try {
+      // WHO removed the dedicated DON RSS; use general news feed and filter for outbreaks
+      const url  = 'https://www.who.int/rss-feeds/news-english.xml';
+      const r    = await fetchT(ALLORIGINS_BASE + encodeURIComponent(url), 12000);
+      const data = await r.json();
+      const doc  = new DOMParser().parseFromString(data.contents || '', 'text/xml');
+      if (doc.querySelector('parsererror')) return [];
+      const OUTBREAK_RE = /outbreak|disease|virus|epidemic|influenza|flu|h5n1|h5n2|bird flu|avian flu|mpox|measles|dengue|ebola|filovirus|hantavirus|cholera|typhoid|plague|marburg|avian|zoonot/i;
+      const cutoff = Date.now() - 7 * 86400000; // show items up to 7 days old
+      const hits = [...doc.querySelectorAll('item')]
+        .filter(item => OUTBREAK_RE.test(item.querySelector('title')?.textContent || ''))
+        .filter(item => new Date(item.querySelector('pubDate')?.textContent || 0).getTime() > cutoff)
+        .slice(0, 3);
+      if (!hits.length) return [];
+      return hits.map(item => {
+        const title   = (item.querySelector('title')?.textContent || '').toUpperCase();
+        const ageDays = (Date.now() - new Date(item.querySelector('pubDate')?.textContent || 0)) / 86400000;
+        const sev     = /PHEIC|PANDEMIC|EMERGENCY|EBOLA|MARBURG/i.test(title) ? 4 : 2;
+        const ageStr  = ageDays < 1 ? `${Math.round(ageDays*24)}H AGO` : `${Math.round(ageDays)}D AGO`;
+        return { symbol:'⊕', cat:'HEALTH WATCH', headline: title.substring(0, 38), detail:`WHO · ${ageStr}`, sev };
+      });
+    } catch { return []; }
+  }
+
+  async function saFetchSpace() {
+    try {
+      const r    = await fetchT('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json', 8000);
+      const rows = await r.json();
+      // rows[0] is headers; latest is last row
+      const latest = rows[rows.length - 1];
+      const kp     = parseFloat(latest[1]);
+      if (isNaN(kp) || kp < 5) return [];
+      const g    = kp >= 9 ? 'G5' : kp >= 8 ? 'G4' : kp >= 7 ? 'G3' : kp >= 6 ? 'G2' : 'G1';
+      const sev  = kp >= 8 ? 4 : kp >= 7 ? 3 : 2;
+      const hfImpact = kp >= 7 ? 'HF/NVIS DEGRADED' : kp >= 6 ? 'HF WATCH' : 'MINOR IMPACT';
+      return [{ symbol:'✦', cat:'SPACE WX', headline:`${g} GEOMAGNETIC STORM`, detail:`Kp=${kp.toFixed(0)} · ${hfImpact}`, sev }];
+    } catch { return []; }
+  }
+
+
+  function saRenderItem(alert) {
+    const el = document.getElementById('sa-item');
+    if (!alert) {
+      el.innerHTML = `
+        <div class="sa-symbol" style="color:rgba(0,255,65,0.18)">◆</div>
+        <div class="sa-cat"    style="color:rgba(0,255,65,0.28)">ALL CLEAR</div>
+        <div class="sa-headline" style="font-size:18px;color:rgba(0,255,65,0.28)">ALL SOURCES<br>NOMINAL</div>
+        <div class="sa-detail">7 FEEDS MONITORED</div>`;
+      requestAnimationFrame(fitSaPanel);
+      return;
+    }
+    el.innerHTML = `
+      <div class="sa-symbol" style="color:rgba(0,255,65,0.28)">${alert.symbol}</div>
+      <div class="sa-cat">${alert.cat}</div>
+      <div class="sa-headline">${alert.headline}</div>
+      <div class="sa-detail">${alert.detail}</div>`;
+    requestAnimationFrame(fitSaPanel);
+  }
+
+  function saRenderDots() {
+    const el = document.getElementById('sa-dots');
+    if (saAlerts.length <= 1) { el.innerHTML = ''; return; }
+    el.innerHTML = saAlerts.map((_, i) =>
+      `<div class="sa-dot${i === saIdx ? ' active' : ''}"></div>`
+    ).join('');
+  }
+
+  function saStartCycle() {
+    clearInterval(saCycleTmr);
+    saRenderItem(saAlerts[saIdx] || null);
+    saRenderDots();
+    if (saAlerts.length <= 1) return;
+    saCycleTmr = setInterval(() => {
+      const el = document.getElementById('sa-item');
+      el.classList.add('fading');
+      setTimeout(() => {
+        saIdx = (saIdx + 1) % saAlerts.length;
+        saRenderItem(saAlerts[saIdx]);
+        saRenderDots();
+        el.classList.remove('fading');
+      }, 340);
+    }, SA_DWELL_MS);
+  }
+
+  // 48-hour alert persistence via localStorage —
+  // alerts detected by any fetcher are kept for 48h even if the live feed
+  // no longer returns them (handles gaps between NHC advisories, WHO posts, etc.)
+  const SA_STORE_KEY = 'zc_sa_v1';
+  const SA_PERSIST_MS = 48 * 3600 * 1000;
+
+  function saLoadStored() {
+    try {
+      const items = JSON.parse(localStorage.getItem(SA_STORE_KEY) || '[]');
+      return items.filter(a => (Date.now() - a._seen) < SA_PERSIST_MS);
+    } catch { return []; }
+  }
+
+  function saMerge(fresh) {
+    const now    = Date.now();
+    const stored = saLoadStored();
+    const seenAt = new Map(stored.map(a => [`${a.cat}|${a.headline}`, a._seen]));
+    // Tag fresh items with first-seen timestamp
+    const tagged = fresh.map(a => ({ ...a, _seen: seenAt.get(`${a.cat}|${a.headline}`) || now }));
+    const freshKeys = new Set(tagged.map(a => `${a.cat}|${a.headline}`));
+    // Retain cached items not in fresh results (still within 48h)
+    const persisted = stored.filter(a => !freshKeys.has(`${a.cat}|${a.headline}`));
+    const merged = [...tagged, ...persisted];
+    try { localStorage.setItem(SA_STORE_KEY, JSON.stringify(merged.slice(0, 60))); } catch {}
+    return merged;
+  }
+
+  async function loadSitAware() {
+    const SA_FETCHERS = [saFetchSeismic, saFetchNwsAlerts, saFetchStorms, saFetchEonet, saFetchCAWildfires, saFetchHealth, saFetchSpace];
+    const results = await Promise.allSettled(SA_FETCHERS.map(f => f()));
+    const fresh   = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value).filter(Boolean);
+    saDegraded    = results.filter(r => r.status === 'rejected').length > SA_FETCHERS.length / 2;
+    saAlerts      = saMerge(fresh).sort((a, b) => b.sev - a.sev);
+    saIdx         = 0;
+    saStartCycle();
+    rebuildTicker();
+    updateSysStatus();
+    window._loaderMark && window._loaderMark('sa');
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -755,14 +1580,54 @@
   updateUptime();
   setInterval(() => { tick(); updateUptime(); }, 1000);
 
-  loadAllWx();
-  setInterval(loadAllWx, WX_REFRESH_MS);
+  drawMoon();
+  setInterval(drawMoon, 60 * 60 * 1000); // moon phase changes slowly, hourly is plenty
 
-  // Slight delay so the clock renders first, then fetch feeds
-  setTimeout(() => {
-    loadHeadlines();
-    setInterval(loadHeadlines, NEWS_REFRESH_MS);
-  }, 800);
+  // Fit SA panel: symbol height = center height minus the text rows below it.
+  // Called after every saRenderItem() and on resize.
+  function fitSaPanel() {
+    const center  = document.querySelector('.zulu-center');
+    const saBlock = document.querySelector('.sa-block');
+    const symEl   = saBlock && saBlock.querySelector('.sa-symbol');
+    if (!center || !saBlock || !symEl) return;
+    const centerH = center.offsetHeight;
+    saBlock.style.maxHeight = centerH + 'px';
+    // Sum actual rendered heights of text rows below the symbol
+    let textH = 0;
+    ['.sa-cat', '.sa-headline', '.sa-detail'].forEach(sel => {
+      const el = saBlock.querySelector(sel);
+      if (el) textH += el.offsetHeight + 5; // +5 for margin-top
+    });
+    if (textH === 0) textH = 52; // fallback before content renders
+    const symH = Math.max(24, centerH - textH - 4);
+    symEl.style.height    = symH + 'px';
+    symEl.style.fontSize  = symH + 'px'; // scales text symbols; SVG fills height via CSS
+  }
+  fitSaPanel();
+  new ResizeObserver(fitSaPanel).observe(document.querySelector('.zulu-center'));
+  window.addEventListener('resize', fitSaPanel);
+
+  // launchWithRetry: fires fn immediately (after initialDelayMs), then backs off
+  // through RETRY_MS if still degraded, finally handing off to setInterval at normalMs.
+  function launchWithRetry(fn, isStillDegraded, normalMs, initialDelayMs) {
+    const RETRY_MS = [6000, 18000, 45000, 120000];
+    async function attempt(idx) {
+      await fn();
+      if (isStillDegraded() && idx < RETRY_MS.length) {
+        setTimeout(() => attempt(idx + 1), RETRY_MS[idx]);
+      } else {
+        setInterval(fn, normalMs);
+      }
+    }
+    if (initialDelayMs) setTimeout(() => attempt(0), initialDelayMs);
+    else attempt(0);
+  }
+
+  launchWithRetry(loadAllWx,      () => wxDegraded,         WX_REFRESH_MS);
+  launchWithRetry(fetchAllSunsets,() => false,               6 * 60 * 60 * 1000);
+  launchWithRetry(loadHeadlines,  () => intelFeedDegraded,   NEWS_REFRESH_MS,  800);
+  launchWithRetry(loadSitAware,   () => saDegraded,          SA_REFRESH_MS,    1200);
+
   </script>
 </body>
 </html>
