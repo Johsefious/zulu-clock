@@ -611,8 +611,8 @@
     const done = { wx: false, news: false, sa: false };
     let triggered = false;
 
-    // Everything except the loader itself — all start invisible, all power on together
-    const POWER_ON_SELS = '.topbar, .zulu-center, .zulu-flank, .tz-row, .rule, .wx-section, .ticker';
+    // .zulu-center excluded — clock stays at full opacity and shines through as loader fades
+    const POWER_ON_SELS = '.topbar, .zulu-flank, .tz-row, .rule, .wx-section, .ticker';
 
     function triggerOut() {
       if (triggered) return;
@@ -633,7 +633,7 @@
         loaderMsg.style.opacity = '0';
       }
 
-      // T=0: pre-hide all power-on elements (still under the solid loader — user can't see this)
+      // T=0: pre-hide non-clock elements (still under the solid loader — user can't see this)
       powerEls.forEach(el => { el.style.transition = 'none'; el.style.opacity = '0'; });
 
       // Step 1: pin loader clock at its current absolute pixel position (leave flex flow)
@@ -658,21 +658,20 @@
       loaderClk.style.transform       = `translate(${dx}px,${dy}px) scale(${sx},${sy})`;
 
       // T=0.65s: animation lands.
-      //   — remove loader clock (real clock, at same position, takes over)
-      //   — loader background fades out (0.9s) while real UI breathes in simultaneously
+      //   — loader clock removed; real clock (always opacity:1) shines through as loader fades
+      //   — loader background fades (1.2s); everything else breathes in slowly (4s)
       setTimeout(() => {
         loaderClk.remove();
 
-        loaderEl.style.transition = 'opacity 0.9s ease';
+        loaderEl.style.transition = 'opacity 1.2s ease';
         loaderEl.style.opacity    = '0';
 
-        // All elements power on together — slow, simultaneous
         powerEls.forEach(el => {
-          el.style.transition = 'opacity 0.9s ease';
+          el.style.transition = 'opacity 4s ease';
           el.style.opacity    = '1';
         });
 
-        setTimeout(() => loaderEl.remove(), 950);
+        setTimeout(() => loaderEl.remove(), 1300);
       }, 650);
     }
 
