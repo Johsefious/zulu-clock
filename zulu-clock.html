@@ -488,22 +488,20 @@
       background: #000;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      transition: opacity 1s ease;
     }
-    #loader.dismissed { opacity: 0; pointer-events: none; }
+    /* Must be pixel-identical to #zulu-time so the crossfade is seamless */
     #loader-clock {
-      font-family: 'VT323', monospace;
+      font-family: 'VT323', 'Courier New', monospace;
       font-size: var(--zulu-size);
       color: var(--green);
-      text-shadow: 0 0 5px var(--green), 0 0 14px var(--green), 0 0 40px rgba(0,255,65,0.25);
+      text-shadow:
+        0 0 5px  var(--green),
+        0 0 12px var(--green),
+        0 0 28px var(--green-glow),
+        0 0 55px rgba(0,255,65,0.07);
       letter-spacing: var(--zulu-lsp);
       line-height: 1;
-    }
-    #loader-label {
-      font-size: clamp(8px, 0.65vw, 11px);
-      letter-spacing: 4px;
-      color: rgba(0,255,65,0.3);
-      margin-top: 6px;
+      display: block;
     }
     #loader-msg {
       font-size: 12px;
@@ -521,7 +519,6 @@
   <!-- Loading screen — dismissed once wx + news + SA all respond (max 8 s) -->
   <div id="loader">
     <div id="loader-clock">--:--:--Z</div>
-    <div id="loader-label">&#9668; ZULU TIME &nbsp;&bull;&nbsp; COORDINATED UNIVERSAL TIME &#9658;</div>
     <div id="loader-msg">LOADING<span class="ld">.</span><span class="ld">.</span><span class="ld">.</span></div>
   </div>
 
@@ -610,24 +607,81 @@
   //  LOADER
   // ─────────────────────────────────────────────────────────────
   (function() {
-    const LOAD_MAX_MS = 8000;
+    const LOAD_MAX_MS = 20000; // hard ceiling — 20 s gives slow connections time to finish
     const done = { wx: false, news: false, sa: false };
-    const loaderEl = document.getElementById('loader');
-    const clockEl  = document.getElementById('loader-clock');
+    let triggered = false;
 
-    function dismiss() {
-      if (!loaderEl || loaderEl.classList.contains('dismissed')) return;
-      loaderEl.classList.add('dismissed');
-      setTimeout(() => loaderEl && loaderEl.remove(), 1100);
+    // Everything except the loader itself — all start invisible, all power on together
+    const POWER_ON_SELS = '.topbar, .zulu-center, .zulu-flank, .tz-row, .rule, .wx-section, .ticker';
+
+    function triggerOut() {
+      if (triggered) return;
+      triggered = true;
+
+      const loaderEl  = document.getElementById('loader');
+      const loaderMsg = document.getElementById('loader-msg');
+      const loaderClk = document.getElementById('loader-clock');
+      const realClk   = document.getElementById('zulu-time');
+
+      if (!loaderEl || !loaderClk || !realClk) { loaderEl && loaderEl.remove(); return; }
+
+      const powerEls = [...document.querySelectorAll(POWER_ON_SELS)];
+
+      // T=0: fade "Loading..." text
+      if (loaderMsg) {
+        loaderMsg.style.transition = 'opacity 0.35s';
+        loaderMsg.style.opacity = '0';
+      }
+
+      // T=0: pre-hide all power-on elements (still under the solid loader — user can't see this)
+      powerEls.forEach(el => { el.style.transition = 'none'; el.style.opacity = '0'; });
+
+      // Step 1: pin loader clock at its current absolute pixel position (leave flex flow)
+      const lcRect = loaderClk.getBoundingClientRect();
+      loaderClk.style.position  = 'fixed';
+      loaderClk.style.left      = lcRect.left + 'px';
+      loaderClk.style.top       = lcRect.top  + 'px';
+      loaderClk.style.transform = 'none';
+      loaderClk.style.margin    = '0';
+
+      void loaderClk.offsetWidth; // commit position as animation start-state
+
+      // Step 2: animate to exactly where #zulu-time lives (pure translation — same font-size = scale≈1)
+      const rRect = realClk.getBoundingClientRect();
+      const dx = rRect.left - lcRect.left;
+      const dy = rRect.top  - lcRect.top;
+      const sx = rRect.width  / lcRect.width;
+      const sy = rRect.height / lcRect.height;
+
+      loaderClk.style.transition      = 'transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)';
+      loaderClk.style.transformOrigin = 'top left';
+      loaderClk.style.transform       = `translate(${dx}px,${dy}px) scale(${sx},${sy})`;
+
+      // T=0.65s: animation lands.
+      //   — remove loader clock (real clock, at same position, takes over)
+      //   — loader background fades out (0.9s) while real UI breathes in simultaneously
+      setTimeout(() => {
+        loaderClk.remove();
+
+        loaderEl.style.transition = 'opacity 0.9s ease';
+        loaderEl.style.opacity    = '0';
+
+        // All elements power on together — slow, simultaneous
+        powerEls.forEach(el => {
+          el.style.transition = 'opacity 0.9s ease';
+          el.style.opacity    = '1';
+        });
+
+        setTimeout(() => loaderEl.remove(), 950);
+      }, 650);
     }
 
-    // Expose mark functions on window so fetch wrappers can call them
     window._loaderMark = function(key) {
       done[key] = true;
-      if (done.wx && done.news && done.sa) dismiss();
+      if (done.wx && done.news && done.sa) triggerOut();
     };
 
-    // Keep the loader clock ticking live
+    const clockEl = document.getElementById('loader-clock');
     function tick() {
       if (!clockEl) return;
       const n = new Date();
@@ -637,7 +691,7 @@
     }
     tick();
 
-    setTimeout(dismiss, LOAD_MAX_MS); // hard ceiling
+    setTimeout(triggerOut, LOAD_MAX_MS);
   })();
 
   // ─────────────────────────────────────────────────────────────
@@ -1413,11 +1467,29 @@
         e.categories.some(c => WANT[c.title] !== undefined)
       );
       if (!hits.length) return [];
+
+      function eonetRegion(e) {
+        const geo = (e.geometry || []).slice().reverse().find(g => g.coordinates);
+        if (!geo) return null;
+        const [lon, lat] = geo.coordinates;
+        if (lat > 20 && lat < 32 && lon > -98 && lon < -82) return 'GULF OF MEXICO';
+        if (lat > 8  && lat < 24 && lon > -88 && lon < -60) return 'CARIBBEAN';
+        if (lat >= 0 && lon < -100)                          return 'E PACIFIC';
+        if (lat >= 0 && lon > 100)                           return 'W PACIFIC';
+        if (lat >= 0 && lon > 30 && lon <= 100)              return 'INDIAN OCEAN';
+        if (lat >= 0 && lon <= 0)                            return 'N ATLANTIC';
+        if (lat < 0  && lon > 100)                           return 'S PACIFIC';
+        if (lat < 0  && lon <= 0)                            return 'S ATLANTIC';
+        return null;
+      }
+
       return hits.slice(0, 3).map(e => {
-        const cat  = e.categories[0].title;
-        const sev  = WANT[cat] || 2;
-        const sym  = cat === 'Volcanoes' ? '▲' : SPIRAL_SA_SVG;
-        return { symbol: sym, cat: cat.toUpperCase(), headline: e.title.toUpperCase(), detail: 'NASA EONET · OPEN EVENT', sev };
+        const cat    = e.categories[0].title;
+        const sev    = WANT[cat] || 2;
+        const sym    = cat === 'Volcanoes' ? '▲' : SPIRAL_SA_SVG;
+        const region = eonetRegion(e);
+        const detail = region ? `EONET · ${region}` : 'NASA EONET';
+        return { symbol: sym, cat: cat.toUpperCase(), headline: e.title.toUpperCase(), detail, sev };
       });
     } catch { return []; }
   }
