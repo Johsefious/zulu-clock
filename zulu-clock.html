@@ -646,16 +646,17 @@
 
       void loaderClk.offsetWidth; // commit position as animation start-state
 
-      // Step 2: animate to exactly where #zulu-time lives (pure translation — same font-size = scale≈1)
+      // Step 2: center-to-center translation — no scale.
+      // #zulu-time is display:block and inherits .zulu-center's full width (set by
+      // the wider label text), so rRect.width >> lcRect.width. Scaling by that ratio
+      // horizontally smears the loader clock. Both clocks render identical glyphs at
+      // the same font-size; aligning their visual glyph-centers is all that's needed.
       const rRect = realClk.getBoundingClientRect();
-      const dx = rRect.left - lcRect.left;
-      const dy = rRect.top  - lcRect.top;
-      const sx = rRect.width  / lcRect.width;
-      const sy = rRect.height / lcRect.height;
+      const dx = (rRect.left + rRect.width  / 2) - (lcRect.left + lcRect.width  / 2);
+      const dy = (rRect.top  + rRect.height / 2) - (lcRect.top  + lcRect.height / 2);
 
-      loaderClk.style.transition      = 'transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)';
-      loaderClk.style.transformOrigin = 'top left';
-      loaderClk.style.transform       = `translate(${dx}px,${dy}px) scale(${sx},${sy})`;
+      loaderClk.style.transition = 'transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)';
+      loaderClk.style.transform  = `translate(${dx}px,${dy}px)`;
 
       // T=0.65s: animation lands.
       //   — loader clock removed; real clock (always opacity:1) shines through as loader fades
