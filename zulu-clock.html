@@ -659,11 +659,13 @@
       loaderClk.style.transform  = `translate(${dx}px,${dy}px)`;
 
       // T=0.65s: animation lands.
-      //   — loader clock removed; real clock (always opacity:1) shines through as loader fades
-      //   — loader background fades (1.2s); everything else breathes in slowly (4s)
+      //   Do NOT remove loaderClk here. Removing it before the loader fade commits
+      //   leaves 1-2 solid-black frames where no clock is visible.
+      //   Instead let the loader clock ride inside the loader as it fades.
+      //   Compositing math: loader_clock×X + real_clock×(1-X) = real_clock_color
+      //   at every opacity value (both are identical), so the clock stays at full
+      //   brightness throughout. loaderEl.remove() at the end cleans up both.
       setTimeout(() => {
-        loaderClk.remove();
-
         loaderEl.style.transition = 'opacity 1.2s ease';
         loaderEl.style.opacity    = '0';
 
