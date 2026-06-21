@@ -13,7 +13,7 @@ A full-screen tactical time display for macOS. Built as a single self-contained 
 | **California weather** | Berkeley · Fresno · Tulare · Los Angeles — temp, feels-like, condition | [Open-Meteo](https://open-meteo.com) (free, no key) |
 | **News ticker** | Live World / US / CA headlines | Google News RSS, via proxy cascade |
 
-Weather refreshes every 20 minutes. Headlines refresh every 30 minutes with a live countdown in the topbar.
+Weather refreshes every 20 minutes. Headlines refresh every 5 minutes with a live countdown in the topbar.
 
 ## Requirements
 
