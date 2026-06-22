@@ -9,10 +9,10 @@
   <style>
     /* ── Design tokens — adjusted by media queries below ── */
     :root {
-      --green:       #00ff41;
-      --green-dim:   #00a828;
-      --green-dark:  #003a0e;
-      --green-glow:  rgba(0,255,65,0.25);
+      --green:       #ff2d78;
+      --green-dim:   #b01055;
+      --green-dark:  #3d0019;
+      --green-glow:  rgba(255,45,120,0.25);
       --amber:       #ffb700;
       --cyan:        #00eeff;
       --red:         #ff3c3c;
@@ -107,8 +107,8 @@
     .grid-bg {
       position: fixed; inset: 0;
       background-image:
-        linear-gradient(rgba(0,255,65,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,255,65,0.04) 1px, transparent 1px);
+        linear-gradient(rgba(255,45,120,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,45,120,0.04) 1px, transparent 1px);
       background-size: 50px 50px;
       z-index: 0;
       pointer-events: none;
@@ -145,7 +145,7 @@
       font-family: 'VT323', monospace;
       font-size: 60px; /* overridden by fitSaPanel() */
       line-height: 1;
-      filter: drop-shadow(0 0 5px rgba(0,255,65,0.2));
+      filter: drop-shadow(0 0 5px rgba(255,45,120,0.2));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -155,13 +155,13 @@
     .sa-cat {
       font-size: var(--tz-city-size);
       letter-spacing: 2.5px;
-      color: rgba(0,255,65,0.42);
+      color: rgba(255,45,120,0.42);
       margin-top: 3px;
     }
     .sa-headline {
       font-family: 'VT323', monospace;
       font-size: clamp(16px, 1.25vw, 22px);
-      color: rgba(0,255,65,0.5);
+      color: rgba(255,45,120,0.5);
       letter-spacing: 1px;
       line-height: 1.15;
       margin-top: 4px;
@@ -183,10 +183,10 @@
     .sa-dot {
       width: 5px; height: 5px;
       border-radius: 50%;
-      background: rgba(0,255,65,0.18);
+      background: rgba(255,45,120,0.18);
       transition: background 0.3s;
     }
-    .sa-dot.active { background: rgba(0,255,65,0.7); box-shadow: 0 0 4px rgba(0,255,65,0.5); }
+    .sa-dot.active { background: rgba(255,45,120,0.7); box-shadow: 0 0 4px rgba(255,45,120,0.5); }
     @media (max-width: 680px) { .sa-block { display: none; } }
 
     /* Flicker lives on its own pointer-events:none overlay so .shell stays off
@@ -238,8 +238,8 @@
       50%      { opacity: .25; transform: scale(.65); }
     }
 
-    #feed-status   { color: rgba(0,255,65,0.65); font-size: var(--topbar-size); }
-    #feed-countdown{ color: rgba(0,255,65,0.65); font-size: var(--topbar-size); margin-left: 4px; }
+    #feed-status   { color: rgba(255,45,120,0.65); font-size: var(--topbar-size); }
+    #feed-countdown{ color: rgba(255,45,120,0.65); font-size: var(--topbar-size); margin-left: 4px; }
 
     /* ── ZULU primary ─── */
     .zulu-block {
@@ -277,13 +277,13 @@
       width: var(--zulu-size);
       height: var(--zulu-size);
       display: block;
-      filter: drop-shadow(0 0 6px rgba(0,255,65,0.3));
+      filter: drop-shadow(0 0 6px rgba(255,45,120,0.3));
     }
 
     .moon-lbl {
       font-size: var(--tz-city-size);
       letter-spacing: 2px;
-      color: rgba(0,255,65,0.42);
+      color: rgba(255,45,120,0.42);
       text-align: center;
     }
 
@@ -305,7 +305,7 @@
         0 0 5px  var(--green),
         0 0 12px var(--green),
         0 0 28px var(--green-glow),
-        0 0 55px rgba(0,255,65,0.07);
+        0 0 55px rgba(255,45,120,0.07);
       display: block;
     }
 
@@ -325,10 +325,10 @@
     }
 
     .tz-card {
-      border: 1px solid rgba(0,255,65,0.17);
+      border: 1px solid rgba(255,45,120,0.17);
       padding: clamp(5px, 0.6vw, 9px) 6px clamp(4px, 0.5vw, 7px);
       text-align: center;
-      background: rgba(0,255,65,0.018);
+      background: rgba(255,45,120,0.018);
       position: relative;
       overflow: hidden;
     }
@@ -358,14 +358,14 @@
 
     .tz-meta {
       font-size: var(--tz-meta-size);
-      color: rgba(0,255,65,0.38);
+      color: rgba(255,45,120,0.38);
       letter-spacing: 1px;
       margin-top: 1px;
     }
 
     .tz-sun {
       font-size: var(--tz-meta-size);
-      color: rgba(0,255,65,0.28);
+      color: rgba(255,45,120,0.28);
       letter-spacing: 1px;
       margin-top: 2px;
     }
@@ -373,7 +373,7 @@
     /* ── Divider ─── */
     .rule {
       border: none;
-      border-top: 1px solid rgba(0,255,65,0.11);
+      border-top: 1px solid rgba(255,45,120,0.11);
       flex-shrink: 0;
     }
 
@@ -388,7 +388,7 @@
       gap: 7px;
     }
     .section-head::before { content: '◈ '; }
-    .section-head::after  { content: ''; flex: 1; height: 1px; background: rgba(0,255,65,0.11); }
+    .section-head::after  { content: ''; flex: 1; height: 1px; background: rgba(255,45,120,0.11); }
 
     /* ── Weather ─── */
     .wx-section { flex-shrink: 0; }
@@ -400,9 +400,9 @@
     }
 
     .wx-card {
-      border: 1px solid rgba(0,255,65,0.17);
+      border: 1px solid rgba(255,45,120,0.17);
       padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1vw, 14px);
-      background: rgba(0,255,65,0.018);
+      background: rgba(255,45,120,0.018);
       position: relative;
     }
     .wx-card::after {
@@ -425,11 +425,11 @@
     .wx-unit { font-size: calc(var(--wx-temp-size) * 0.45); color: var(--green-dim); }
     .wx-cond  { font-size: var(--wx-sub-size); color: var(--green-dim); letter-spacing: 1px; margin-top: 1px; }
     .wx-sig   { font-size: var(--wx-sub-size); letter-spacing: 1px; margin-top: 3px; line-height: 1.4; }
-    .wx-sig-heat   { color: var(--green); text-shadow: 0 0 8px rgba(0,255,65,0.5); }
+    .wx-sig-heat   { color: var(--green); text-shadow: 0 0 8px rgba(255,45,120,0.5); }
     .wx-sig-warn   { color: var(--amber); text-shadow: 0 0 8px var(--amber-dim); }
     .wx-sig-precip { color: var(--cyan); text-shadow: 0 0 8px rgba(0,200,255,0.5); }
-    .wx-sig-sep    { color: rgba(0,255,65,0.3); }
-    .wx-sun   { font-size: var(--wx-sub-size); color: rgba(0,255,65,0.38); letter-spacing: 1px; margin-top: 2px; }
+    .wx-sig-sep    { color: rgba(255,45,120,0.3); }
+    .wx-sun   { font-size: var(--wx-sub-size); color: rgba(255,45,120,0.38); letter-spacing: 1px; margin-top: 2px; }
     .wx-pend  { font-size: calc(var(--wx-sub-size) * 1.1); color: var(--green-dim); animation: blink 1s step-end infinite; }
     .wx-err   { font-size: var(--wx-sub-size); color: var(--red); letter-spacing: 1px; }
 
@@ -437,7 +437,7 @@
 
     /* ── News ticker ─── */
     .ticker {
-      border-top: 1px solid rgba(0,255,65,0.11);
+      border-top: 1px solid rgba(255,45,120,0.11);
       padding-top: 4px;
       overflow: hidden;
       white-space: nowrap;
@@ -455,7 +455,7 @@
       white-space: nowrap;
       font-size: var(--ticker-size);
       letter-spacing: 1.2px;
-      color: rgba(0,255,65,0.55);
+      color: rgba(255,45,120,0.55);
       will-change: transform;
     }
 
@@ -465,7 +465,7 @@
     #ticker-inner .ntag-ca    { color: var(--cyan);  }
     #ticker-inner .ntag-sys   { color: var(--green-dim); }
     #ticker-inner .ntag-wx    { color: var(--amber); }
-    #ticker-inner .nsep { color: rgba(0,255,65,0.22); }
+    #ticker-inner .nsep { color: rgba(255,45,120,0.22); }
 
     .news-link { color: inherit; text-decoration: none; }
 
@@ -473,7 +473,7 @@
     .corner {
       position: fixed;
       font-size: clamp(7px, 0.7vw, 9px);
-      color: rgba(0,255,65,0.16);
+      color: rgba(255,45,120,0.16);
       letter-spacing: 1.5px;
       z-index: 900;
     }
@@ -498,7 +498,7 @@
         0 0 5px  var(--green),
         0 0 12px var(--green),
         0 0 28px var(--green-glow),
-        0 0 55px rgba(0,255,65,0.07);
+        0 0 55px rgba(255,45,120,0.07);
       letter-spacing: var(--zulu-lsp);
       line-height: 1;
       display: block;
@@ -506,7 +506,7 @@
     #loader-msg {
       font-size: 12px;
       letter-spacing: 5px;
-      color: rgba(0,255,65,0.38);
+      color: rgba(255,45,120,0.38);
       margin-top: clamp(18px, 3vh, 36px);
     }
     #loader-msg .ld { opacity: 0; animation: ldot 1.6s infinite; }
@@ -571,13 +571,13 @@
               </pattern>
             </defs>
             <!-- Dark body -->
-            <circle cx="50" cy="50" r="45" fill="rgba(0,18,6,1)" stroke="rgba(0,255,65,0.18)" stroke-width="1.5"/>
+            <circle cx="50" cy="50" r="45" fill="rgba(18,0,8,1)" stroke="rgba(255,45,120,0.18)" stroke-width="1.5"/>
             <!-- Lit portion -->
-            <path id="moon-lit" clip-path="url(#moon-clip)" fill="rgba(0,255,65,0.22)" filter="url(#mglow)"/>
+            <path id="moon-lit" clip-path="url(#moon-clip)" fill="rgba(255,45,120,0.22)" filter="url(#mglow)"/>
             <!-- Pixel grid overlay for block aesthetic -->
             <circle cx="50" cy="50" r="45" fill="url(#moon-grid)" clip-path="url(#moon-clip)"/>
             <!-- Outer ring glow -->
-            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,255,65,0.12)" stroke-width="3"/>
+            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,45,120,0.12)" stroke-width="3"/>
           </svg>
           <div id="moon-lbl" class="moon-lbl"></div>
         </div>
@@ -1567,15 +1567,15 @@
     const el = document.getElementById('sa-item');
     if (!alert) {
       el.innerHTML = `
-        <div class="sa-symbol" style="color:rgba(0,255,65,0.18)">◆</div>
-        <div class="sa-cat"    style="color:rgba(0,255,65,0.28)">ALL CLEAR</div>
-        <div class="sa-headline" style="font-size:18px;color:rgba(0,255,65,0.28)">ALL SOURCES<br>NOMINAL</div>
+        <div class="sa-symbol" style="color:rgba(255,45,120,0.18)">◆</div>
+        <div class="sa-cat"    style="color:rgba(255,45,120,0.28)">ALL CLEAR</div>
+        <div class="sa-headline" style="font-size:18px;color:rgba(255,45,120,0.28)">ALL SOURCES<br>NOMINAL</div>
         <div class="sa-detail">7 FEEDS MONITORED</div>`;
       requestAnimationFrame(fitSaPanel);
       return;
     }
     el.innerHTML = `
-      <div class="sa-symbol" style="color:rgba(0,255,65,0.28)">${alert.symbol}</div>
+      <div class="sa-symbol" style="color:rgba(255,45,120,0.28)">${alert.symbol}</div>
       <div class="sa-cat">${alert.cat}</div>
       <div class="sa-headline">${alert.headline}</div>
       <div class="sa-detail">${alert.detail}</div>`;
@@ -1634,12 +1634,29 @@
     return merged;
   }
 
+  // NHC (cat:'TROPICAL') and EONET (cat:'SEVERE STORMS') both report the same
+  // tropical systems. Keep the NHC entry (richer: category, wind speed, region);
+  // drop the EONET duplicate if its headline contains the same storm name.
+  function saDeduplicateStorms(alerts) {
+    const nhcNames = new Set(
+      alerts
+        .filter(a => a.cat === 'TROPICAL')
+        .map(a => a.headline.split(/\s*[·\-]\s*/)[0].trim())
+        .filter(n => n.length > 2)
+    );
+    if (!nhcNames.size) return alerts;
+    return alerts.filter(a => {
+      if (a.cat !== 'SEVERE STORMS') return true;
+      return ![...nhcNames].some(name => a.headline.includes(name));
+    });
+  }
+
   async function loadSitAware() {
     const SA_FETCHERS = [saFetchSeismic, saFetchNwsAlerts, saFetchStorms, saFetchEonet, saFetchCAWildfires, saFetchHealth, saFetchSpace];
     const results = await Promise.allSettled(SA_FETCHERS.map(f => f()));
     const fresh   = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value).filter(Boolean);
     saDegraded    = results.filter(r => r.status === 'rejected').length > SA_FETCHERS.length / 2;
-    saAlerts      = saMerge(fresh).sort((a, b) => b.sev - a.sev);
+    saAlerts      = saDeduplicateStorms(saMerge(fresh)).sort((a, b) => b.sev - a.sev);
     saIdx         = 0;
     saStartCycle();
     rebuildTicker();
