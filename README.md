@@ -12,7 +12,7 @@ A full-screen tactical time display for macOS. Built as a single self-contained 
 | **California weather** | Berkeley · Fresno · Tulare · Los Angeles — temp, feels-like, condition | [Open-Meteo](https://open-meteo.com) (free, no key) |
 | **News ticker** | Live World / US / CA headlines | Google News RSS, fetched by `server.py` |
 | **Press** | A card per story: checks done, overdue and due today, and the next step. The story with the nearest event comes first, with its countdown. Click to open the Presser app | Presser app at `http://127.0.0.1:8771` (local) |
-| **Missions** | The next four FS missions: days to go, first names, type, confirmed / briefing / plan ticks, and when the plan is due or late. Red when a mission is two days out with no approved plan | Mission cmd's `mmGetMissions`, through `server.py` |
+| **Missions** | The next four FS missions: days to go, first names, type, facilities, confirmed / briefing / plan ticks, and when the plan is due or late. Red when a mission is two days out with no approved plan | Mission cmd's `mmGetMissions`, through `server.py` |
 | **SA panel** | Rotating situational awareness alerts (see below) | Multiple (see below) |
 
 Weather refreshes every 20 minutes. Headlines refresh every 5 minutes.
@@ -21,7 +21,7 @@ The Press section reads the Presser app's `/api/summary` every minute and stores
 
 ## Missions
 
-The clock reads missions only through Mission cmd's own `mmGetMissions` endpoint (fs-coordination), never from the sheet. `server.py` passes it on at `/missions` every 2 minutes and keeps nothing. It shows first names, dates and mission types, never facilities.
+The clock reads missions only through Mission cmd's own `mmGetMissions` endpoint (fs-coordination), never from the sheet. `server.py` passes it on at `/missions` every 2 minutes and keeps nothing. It shows first names, dates, mission types and facilities.
 
 `server.py` calls `POST <MISSIONS_CALL>/call/mmGetMissions`, where `MISSIONS_CALL` is an environment variable. Mission cmd has no way in from outside the page yet (its Task 6), so for now the section says "Mission cmd not connected". Mission cmd's read-only preview (`node tools/preview.js <snapshot> 8790` in fs-coordination) speaks the same calls, so `MISSIONS_CALL=http://127.0.0.1:8790 ./launch.sh` shows a snapshot's missions.
 

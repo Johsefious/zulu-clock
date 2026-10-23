@@ -1859,7 +1859,7 @@
 
   // ─────────────────────────────────────────────────────────────
   //  MISSIONS — upcoming FS missions, from Mission cmd's mmGetMissions via server.py /missions.
-  //  First names, dates and types only: facilities stay off the clock. Read only, keeps nothing.
+  //  First names, dates, types and facilities. Read only, keeps nothing.
   // ─────────────────────────────────────────────────────────────
   let missionsData = null;     // last good mmGetMissions answer
   let missionsNote = '';       // why there is none, for the head
@@ -1907,6 +1907,7 @@
       else if (m.planReceived) plan = el('div', 'press-line', 'PLAN IN' + (Date.parse(m.planReceived.review_by) ? ' · REVIEW BY ' + pressWhen(Date.parse(m.planReceived.review_by)) : ''));
       else if (Date.parse(m.planDue)) plan = el('div', 'press-line' + (planLate(m) ? ' press-td' : ''), (planLate(m) ? 'PLAN LATE · WAS DUE ' : 'PLAN DUE ') + pressWhen(Date.parse(m.planDue)));
       if (plan) card.append(plan);
+      if (m.facilities.length) card.append(el('div', 'press-line', '▸ ' + m.facilities.join(' + ').toUpperCase()));
       return card;
     });
     pressSpread(cards);
