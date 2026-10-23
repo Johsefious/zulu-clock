@@ -2,6 +2,10 @@
 
 A full-screen tactical time display for macOS. Built as a single self-contained HTML file — no installation, no dependencies to install.
 
+## Where things stand
+
+Sessions working on the clock: the latest handoff is `handoff/HANDOFF.md` (git-ignored; on Joe's Mac only). Read it first.
+
 ## What it shows
 
 | Section | Data | Source |
