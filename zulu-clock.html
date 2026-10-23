@@ -255,8 +255,9 @@
       min-height: 0;
     }
 
-    .status-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .status-right { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+    .status-left { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; }
+    #sys-status { overflow: hidden; text-overflow: ellipsis; }
+    .status-right { display: flex; align-items: center; gap: 14px; white-space: nowrap; flex-shrink: 0; margin-left: 14px; }
 
     .dot {
       width: 6px; height: 6px;
@@ -266,6 +267,8 @@
       flex-shrink: 0;
       animation: heartbeat 2s ease-in-out infinite;
     }
+
+    .dot.amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
 
     @keyframes heartbeat {
       0%,100% { opacity: 1; transform: scale(1); }
@@ -564,7 +567,6 @@
       z-index: 900;
     }
     .tl { top:3px; left:5px; }
-    .tr { top:3px; right:5px; }
     .bl { bottom:3px; left:5px; }
     .br { bottom:3px; right:5px; }
 
@@ -611,21 +613,18 @@
   <div class="grid-bg"></div>
   <div class="flicker-overlay"></div>
   <div class="corner tl">CCLOCK v3.0 // ARX</div>
-  <div class="corner tr">ENC:AES-256 // SECURE</div>
   <div class="corner bl">LAT:37.87N LON:122.27W</div>
-  <div class="corner br" id="corner-br">GRID::INIT</div>
 
   <div class="shell">
 
     <!-- Topbar -->
     <div class="topbar">
       <div class="status-left">
-        <span class="dot"></span>
-        TACTICAL TIME DISPLAY &mdash; <span id="sys-status">SOURCES: CHECKING&hellip;</span>
-        &nbsp;<span id="feed-status">&#9679; FEED: LOADING&hellip;</span><span id="feed-countdown"></span>
+        <span class="dot" id="sys-dot"></span>
+        <span id="sys-status">SOURCES: CHECKING&hellip;</span>
       </div>
       <div class="status-right">
-        <span id="uptime">SYS::UPTIME 00:00:00</span>
+        <span><span id="feed-status">HEADLINES: LOADING&hellip;</span><span id="feed-countdown"></span></span>
       </div>
     </div>
 
@@ -875,17 +874,18 @@
 
   function renderStatus() {
     const sys = document.getElementById('sys-status');
+    let allGood = false;
     if (!statusData) {
       sys.innerHTML = amber('STATUS UNKNOWN: SERVER.PY NOT ANSWERING');
     } else {
       const called = statusData.sources.filter(s => s.state !== 'not called');
       const bad    = called.filter(s => s.state !== 'answering');
-      sys.innerHTML = !bad.length
-        ? `${called.length} OF ${called.length} SOURCES ANSWERING`
-        : amber(`${called.length - bad.length} OF ${called.length} SOURCES ANSWERING &mdash; ` +
-            bad.slice(0, 2).map(s => `${s.label.toUpperCase()} ${s.state.toUpperCase()}`).join(' &middot; ') +
-            (bad.length > 2 ? ` +${bad.length - 2}` : ''));
+      allGood = !bad.length;
+      sys.innerHTML = `${called.length - bad.length} OF ${called.length} SOURCES` + (allGood ? '' :
+        ' &middot; ' + amber(bad.slice(0, 2).map(s => `${s.label.toUpperCase()} ${s.state.toUpperCase()}`).join(' &middot; ') +
+          (bad.length > 2 ? ` +${bad.length - 2}` : '')));
     }
+    document.getElementById('sys-dot').classList.toggle('amber', !allGood);
     const om = statusOf('open-meteo');
     const wx = document.getElementById('wx-status');
     wx.innerHTML = om ? (om.state === 'answering' ? statusLine(om) : amber(statusLine(om))) : 'OPEN-METEO';
@@ -1113,11 +1113,6 @@
     // Solar display flips when sunrise/sunset passes — check once per minute
     if (now.getUTCSeconds() === 0) updateSolarDisplay();
 
-    // Grid ref (changes each minute)
-    if (now.getUTCSeconds() === 0 || document.getElementById('corner-br').textContent === 'GRID::INIT') {
-      document.getElementById('corner-br').textContent = `GR-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}Z`;
-    }
-
     // News refresh countdown
     const cdEl = document.getElementById('feed-countdown');
     if (cdEl && nextNewsRefreshAt) {
@@ -1125,21 +1120,11 @@
       if (rem > 0) {
         const m = Math.floor(rem / 60000);
         const s = Math.floor((rem % 60000) / 1000);
-        cdEl.textContent = `— ↻ ${m}:${pad(s)}`;
+        cdEl.textContent = ` · NEXT ↻ ${m}:${pad(s)}`;
       } else {
-        cdEl.textContent = '— ↻ NOW';
+        cdEl.textContent = ' · NEXT ↻ NOW';
       }
     }
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  //  UPTIME
-  // ─────────────────────────────────────────────────────────────
-  const t0 = Date.now();
-  function updateUptime() {
-    const s = Math.floor((Date.now() - t0) / 1000);
-    document.getElementById('uptime').textContent =
-      `SYS::UPTIME ${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -1412,20 +1397,10 @@
     document.getElementById('feed-status').innerHTML = html;
   }
 
-  // The feed line: headline count from the page, each feed's state from /status.
+  // The headline count; a failing news feed is named in the sources line, not here.
   function renderFeedStatus() {
-    const feeds = RSS_FEEDS.map(f => statusOf(f.source)).filter(Boolean);
-    if (!feeds.length) return;
-    const bad   = feeds.filter(s => s.state !== 'answering');
-    const count = currentHeadlines.length ? `${currentHeadlines.length} HEADLINES &mdash; ` : '';
-    if (!bad.length) {
-      const last = feeds.map(s => s.last_call_at).sort().pop();
-      setFeedStatus(`◆ INTEL FEED <span style="color:var(--red);letter-spacing:2px">LIVE</span>: ${count}` +
-        `GOOGLE NEWS ${feeds.length}/${feeds.length} ANSWERED ${utcHM(last)}`);
-    } else {
-      setFeedStatus(`◆ INTEL FEED ` + amber(bad.length === feeds.length ? 'NO SIGNAL' : 'PARTIAL') + `: ${count}` +
-        bad.map(statusLine).join(' &middot; '));
-    }
+    if (!nextNewsRefreshAt) return;   // first load not finished
+    setFeedStatus(currentHeadlines.length ? `${currentHeadlines.length} HEADLINES` : amber('NO HEADLINES'));
   }
 
   async function loadHeadlines() {
@@ -1452,6 +1427,7 @@
       console.error('All news feeds failed:', results.map((r,i) =>
         `[${RSS_FEEDS[i].tag}] ${r.reason?.message}`).join(' | '));
     }
+    renderFeedStatus();
     window._loaderMark && window._loaderMark('news');
   }
 
@@ -1969,8 +1945,7 @@
   //  START
   // ─────────────────────────────────────────────────────────────
   tick();
-  updateUptime();
-  setInterval(() => { tick(); updateUptime(); if (pressData) pressRender(); }, 1000);
+  setInterval(() => { tick(); if (pressData) pressRender(); }, 1000);
 
   drawMoon();
   setInterval(drawMoon, 60 * 60 * 1000); // moon phase changes slowly, hourly is plenty

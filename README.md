@@ -35,7 +35,7 @@ Every status word on the clock comes from a real call. The page never calls an o
 | `not connected` | Mission cmd only: no way in yet |
 | `not called` | The clock hasn't asked for it since `server.py` started |
 
-The top bar counts the sources answering and names the ones that aren't; the feed line, the weather head, the SA all-clear card, and the Press and Missions heads each print their own sources' states; the ticker's `[SYS]` items list every source that isn't answering (all of them when there are no headlines). The sources are the `SOURCES` table in `server.py`.
+The top bar is one line: on the left, the sources answering and the first two that aren't (amber, with the dot); on the right, the headline count and the next news refresh. The weather head, the SA all-clear card, and the Press and Missions heads each print their own sources' states; the ticker's `[SYS]` items list every source that isn't answering (all of them when there are no headlines). The sources are the `SOURCES` table in `server.py`.
 
 ## Missions
 
