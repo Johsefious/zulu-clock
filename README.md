@@ -11,9 +11,12 @@ A full-screen tactical time display for macOS. Built as a single self-contained 
 | **Moon phase** | Phase name, illumination %, rise/set | Calculated (no API) |
 | **California weather** | Berkeley · Fresno · Tulare · Los Angeles — temp, feels-like, condition | [Open-Meteo](https://open-meteo.com) (free, no key) |
 | **News ticker** | Live World / US / CA headlines | Google News RSS |
+| **Press** | Overdue, today and the next countdown for DxE press stories; click to open the Presser app | Presser app at `http://127.0.0.1:8771` (local) |
 | **SA panel** | Rotating situational awareness alerts (see below) | Multiple (see below) |
 
 Weather refreshes every 20 minutes. Headlines refresh every 5 minutes.
+
+The Press section reads the Presser app's `/api/summary` every minute and stores nothing. It shows "PRESS: app not running" when the app does not answer. The address is the `PRESS_URL` constant at the top of the script; the app allows the clock only from `http://localhost:8765` (what `launch.sh` opens), not from a file.
 
 ## Situational Awareness (SA) data sources
 
