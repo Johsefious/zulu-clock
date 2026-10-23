@@ -10,8 +10,8 @@ A full-screen tactical time display for macOS. Built as a single self-contained 
 | **Timezone row** | Los Angeles · Denver · Chicago · New York · London | System clock |
 | **Moon phase** | Phase name, illumination %, rise/set | Calculated (no API) |
 | **California weather** | Berkeley · Fresno · Tulare · Los Angeles — temp, feels-like, condition | [Open-Meteo](https://open-meteo.com) (free, no key) |
-| **News ticker** | Live World / US / CA headlines | Google News RSS |
-| **Press** | Overdue, today and the next countdown for DxE press stories; click to open the Presser app | Presser app at `http://127.0.0.1:8771` (local) |
+| **News ticker** | Live World / US / CA headlines | Google News RSS, fetched by `server.py` |
+| **Press** | A countdown to the next event, then a card per story: checks done, overdue and due today, and the next step; click to open the Presser app | Presser app at `http://127.0.0.1:8771` (local) |
 | **SA panel** | Rotating situational awareness alerts (see below) | Multiple (see below) |
 
 Weather refreshes every 20 minutes. Headlines refresh every 5 minutes.
@@ -48,7 +48,7 @@ Keywords monitored in WHO feed: outbreak, disease, virus, epidemic, influenza, f
 ./launch.sh
 ```
 
-Opens the clock at `http://localhost:8769/zulu-clock.html` using Python's built-in HTTP server. Works in Safari, Chrome, Firefox, or any modern browser. Press `Ctrl+C` in the terminal to stop. If port 8769 is already taken, `launch.sh` stops the holder only when it is an earlier Zulu Clock server; otherwise it says so and exits without stopping anything.
+Opens the clock at `http://localhost:8769/zulu-clock.html`, served by `server.py`, which also fetches the news feeds (browsers can't read Google News directly, and the free proxies the clock used to rely on have closed). Works in Safari, Chrome, Firefox, or any modern browser. Press `Ctrl+C` in the terminal to stop. If port 8769 is already taken, `launch.sh` stops the holder only when it is an earlier Zulu Clock server; otherwise it says so and exits without stopping anything.
 
 ### Option B — Open directly in browser
 
@@ -58,7 +58,7 @@ Double-click `zulu-clock.html`, or:
 open zulu-clock.html
 ```
 
-Works in Safari and Chrome. All API calls go through CORS-friendly proxies so local file access is not an issue.
+Works in Safari and Chrome, but without `server.py` the news ticker falls back to public proxies that are currently down, and the Press section won't load.
 
 ### Option C — Download from terminal
 
@@ -78,7 +78,7 @@ open zulu-clock.html
 
 - **Loading screen**: on first load, a Zulu clock is shown centered while all data sources initialize. Once all feeds respond (or after 20 seconds), the clock animates to its final position and the full display fades in. If any feed is slow, automatic retries run at 6s → 18s → 45s → 2min before settling into the normal refresh cadence.
 - **SA persistence**: any SA alert seen in the last 48 hours stays visible even if the live feed doesn't return it on the next poll.
-- All API calls have a 12-second timeout with automatic retry across three proxy services (rss2json → allorigins → corsproxy). If all news feeds fail, the ticker displays system status messages and retries in 30 minutes.
+- News comes from `server.py` first (it caches each feed for 2 minutes), then the public proxies rss2json → allorigins. Each try has a 12-second timeout. If all news feeds fail, the ticker displays system status messages and retries in 30 minutes.
 - Temperature color-codes: **amber** ≥ 90°F · **green** normal · **cyan** ≤ 45°F
 - Fonts (VT323, Share Tech Mono) load from Google Fonts CDN. If offline, the display falls back to Courier New — the clock still works.
 
@@ -88,5 +88,6 @@ open zulu-clock.html
 zulu-clock/
 ├── README.md
 ├── zulu-clock.html   ← the entire app (single file)
-└── launch.sh         ← macOS launcher (starts local server + opens browser)
+├── server.py         ← local server: serves the page, fetches the news feeds
+└── launch.sh         ← macOS launcher (starts server.py + opens browser)
 ```

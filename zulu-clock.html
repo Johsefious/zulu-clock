@@ -444,39 +444,36 @@
       cursor: pointer;
     }
     .press-section:hover .section-head { color: var(--green); }
-    .press-top {
-      display: flex;
-      align-items: baseline;
-      gap: clamp(12px, 2vw, 28px);
-      font-size: var(--wx-sub-size);
-      letter-spacing: 1.5px;
-      color: var(--green-dim);
-      margin-bottom: 3px;
-      white-space: nowrap;
-      overflow: hidden;
-    }
-    .press-count { font-family: 'VT323', monospace; font-size: calc(var(--wx-sub-size) * 1.6); letter-spacing: 2px; line-height: 1; color: var(--green); text-shadow: 0 0 9px var(--green-glow); }
-    .press-count.today { color: var(--amber); text-shadow: 0 0 9px rgba(255,183,0,0.35); }
-    .press-stories {
+    .press-section:hover .press-card   { border-color: rgba(0,255,65,0.3); }
+    .press-tot { order: 1; letter-spacing: 2px; color: var(--green-dim); }
+    .press-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(var(--wx-cols), minmax(0, 1fr));
       gap: clamp(5px, 0.8vw, 12px);
     }
-    .press-story {
-      font-size: var(--wx-sub-size);
-      letter-spacing: 1px;
-      color: var(--green-dim);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      border-left: 2px solid rgba(0,255,65,0.17);
-      padding-left: 7px;
+    .press-card { grid-column: span var(--span, 2); min-width: 0; }
+    .press-card.today::after   { background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+    .press-card.overdue::after { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+    .press-card.overdue { border-color: rgba(255,60,60,0.35); }
+    .press-card.today   { border-color: rgba(255,183,0,0.3); }
+    .press-card .wx-city { display: flex; justify-content: space-between; gap: 8px; }
+    .press-card .wx-city span:first-child { color: var(--green); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .press-line { font-size: var(--wx-sub-size); letter-spacing: 1px; color: var(--green-dim); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .press-cd { font-size: calc(var(--wx-temp-size) * 0.8); }
+    .press-cd.today { color: var(--amber); text-shadow: 0 0 9px rgba(255,183,0,0.35); }
+    .press-cd .wx-unit { margin: 0 2px; }
+    .press-cd .wx-unit:not(:first-child) { margin-right: 0.35em; }   /* the D before the hours */
+    .press-bar { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; font-size: var(--wx-sub-size); color: var(--green); letter-spacing: 1px; }
+    .press-bar > div { flex: 1; height: 8px; border: 1px solid rgba(0,255,65,0.25); position: relative; }
+    .press-bar > div > i { position: absolute; inset: 0 auto 0 0; background: var(--green-dim); box-shadow: 0 0 6px var(--green-glow); }
+    /* one segment per check: dark gaps drawn over the fill */
+    .press-bar > div::after {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--seg, 10) - 2px), #000 0 calc(100% / var(--seg, 10)));
     }
-    .press-story.today   { border-left-color: var(--amber); }
-    .press-story.overdue { border-left-color: var(--red); }
-    .press-story .nm { color: var(--green); }
     .press-od { color: var(--red); }
     .press-td { color: var(--amber); }
+    .press-late { color: var(--red); }
     .press-off .section-head { margin-bottom: 0; }
 
     /* ── News ticker ─── */
@@ -768,9 +765,10 @@
     { id:'sandiego',    label:'SAN DIEGO',   lat:32.7157, lon:-117.1611, metar:'KSAN' },
   ];
 
-  // RSS headlines — two proxy layers for resilience:
-  //   1. rss2json.com  (JSON, no key, free 10k req/day)
-  //   2. allorigins.win (raw XML fallback, handles null origin from file://)
+  // RSS headlines — the local server first, then two public proxies:
+  //   1. server.py /news/<TAG> (launch.sh; fetches Google News itself)
+  //   2. rss2json.com  (JSON, no key, free 10k req/day)
+  //   3. allorigins.win (raw XML fallback, handles null origin from file://)
   // Google News RSS — proxy-agnostic, never blocks scrapers, updates ~15 min
   const RSS_FEEDS = [
     { tag:'WORLD', cls:'ntag-world', url:'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en&gl=US&ceid=US:en' },
@@ -779,7 +777,6 @@
   ];
   const RSS2JSON_BASE   = 'https://api.rss2json.com/v1/api.json?count=10&rss_url=';
   const ALLORIGINS_BASE = 'https://api.allorigins.win/get?url=';
-  const CORSPROXY_BASE  = 'https://corsproxy.io/?';
   const WX_REFRESH_MS   = 20 * 60 * 1000;
   const NEWS_REFRESH_MS = 5  * 60 * 1000;
   const SA_REFRESH_MS   = 4  * 60 * 1000;  // sit-aware: 4 min
@@ -1334,6 +1331,14 @@
     })).filter(h => h.title);
   }
 
+  // Source 1: the local server started by launch.sh (not there when opened as a file)
+  async function fetchViaLocal(feed) {
+    if (!location.protocol.startsWith('http')) throw new Error('local: opened as a file');
+    const r = await fetchT('/news/' + feed.tag, 12000);
+    if (!r.ok) throw new Error(`local ${r.status}`);
+    return parseRssXml(await r.text());
+  }
+
   // Proxy 1: rss2json.com → returns JSON (fastest, has 10k/day free tier)
   async function fetchViaRss2Json(feed) {
     const r    = await fetchT(RSS2JSON_BASE + encodeURIComponent(feed.url), 12000);
@@ -1356,15 +1361,8 @@
     return parseRssXml(wrapper.contents);
   }
 
-  // Proxy 3: corsproxy.io → returns raw content, parse XML locally
-  async function fetchViaCorsproxy(feed) {
-    const r = await fetchT(CORSPROXY_BASE + encodeURIComponent(feed.url), 12000);
-    if (!r.ok) throw new Error(`corsproxy ${r.status}`);
-    return parseRssXml(await r.text());
-  }
-
   async function fetchFeed(feed) {
-    const PROXIES = [fetchViaRss2Json, fetchViaAllOrigins, fetchViaCorsproxy];
+    const PROXIES = [fetchViaLocal, fetchViaRss2Json, fetchViaAllOrigins];
     const errors  = [];
     for (const fn of PROXIES) {
       try {
@@ -1705,14 +1703,6 @@
   // ─────────────────────────────────────────────────────────────
   let pressData = null;   // last good summary, or null when the app did not answer
 
-  function pressCountdown(ms) {
-    const p = v => String(v).padStart(2, '0');
-    const s = Math.max(0, Math.floor(ms / 1000));
-    const d = Math.floor(s / 86400);
-    const hms = `${p(Math.floor(s % 86400 / 3600))}:${p(Math.floor(s % 3600 / 60))}:${p(s % 60)}`;
-    return d ? `T-${p(d)}D ${hms}` : `T-${hms}`;
-  }
-
   // The live story with the nearest event still ahead, or null (an old-builder story has no date).
   function pressNext(stories) {
     let best = null;
@@ -1722,6 +1712,13 @@
       if (!best || t < best.t) best = { t, name: st.short_name };
     });
     return best;
+  }
+
+  const PRESS_DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const PRESS_MONS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  function pressWhen(t) {
+    const d = new Date(t), p = v => String(v).padStart(2, '0');
+    return `${PRESS_DAYS[d.getDay()]} ${d.getDate()} ${PRESS_MONS[d.getMonth()]} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
   function pressRender() {
@@ -1737,42 +1734,79 @@
       return;
     }
     sec.classList.remove('press-off');
-    head.textContent = 'PRESS — PRESSER APP';
     const stories = pressData.stories.filter(st => !st.archived);
     const live = stories.filter(st => !st.old_builder);
-    const el = (cls, text) => { const e = document.createElement('span'); if (cls) e.className = cls; e.textContent = text; return e; };
+    const el = (tag, cls, ...kids) => { const e = document.createElement(tag); if (cls) e.className = cls; e.append(...kids); return e; };
+    const span = (cls, text) => el('span', cls, text);
+    const sep = () => span('wx-sig-sep', ' · ');
 
-    // Top line: nearest countdown, then the totals across the live stories.
-    const top = document.createElement('div');
-    top.className = 'press-top';
+    // Head: totals across the live stories, after the rule.
+    const tot = pressData.totals || {};
+    const totBits = [
+      span(tot.overdue ? 'press-od' : '', `${tot.overdue || 0} OVERDUE`), sep(),
+      span(tot.today ? 'press-td' : '', `${tot.today || 0} TODAY`)];
+    if (tot.messages) totBits.push(sep(), span('', `${tot.messages} TO CHASE`));
+    head.replaceChildren('PRESS — PRESSER APP', el('span', 'press-tot', ...totBits));
+
+    // Card 1: the nearest event still ahead, as a countdown.
     const nxt = pressNext(live);
+    const cards = [];
     if (nxt) {
       const today = new Date(nxt.t).toDateString() === new Date().toDateString();
-      top.append(el('press-count' + (today ? ' today' : ''), pressCountdown(nxt.t - Date.now())), el('', 'NEXT: ' + nxt.name.toUpperCase()));
+      const s = Math.max(0, Math.floor((nxt.t - Date.now()) / 1000)), p = v => String(v).padStart(2, '0');
+      const d = Math.floor(s / 86400);
+      const hms = `${p(Math.floor(s % 86400 / 3600))}:${p(Math.floor(s % 3600 / 60))}:${p(s % 60)}`;
+      const cd = el('div', 'wx-temp press-cd' + (today ? ' today' : ''), span('wx-unit', 'T-'));
+      if (d) cd.append(String(d), span('wx-unit', 'D'));
+      cd.append(hms);
+      cards.push(el('div', 'wx-card press-card' + (today ? ' today' : ''),
+        el('div', 'wx-city', span('', 'NEXT EVENT'), span('', pressWhen(nxt.t))),
+        cd,
+        el('div', 'press-line', nxt.name.toUpperCase())));
     } else {
-      top.append(el('', 'NO UPCOMING EVENT'));
+      cards.push(el('div', 'wx-card press-card',
+        el('div', 'wx-city', span('', 'NEXT EVENT')),
+        el('div', 'wx-temp press-cd', span('wx-unit', 'NONE SET'))));
     }
-    const tot = pressData.totals || {};
-    top.append(
-      el(tot.overdue ? 'press-od' : '', `${tot.overdue || 0} OVERDUE`),
-      el(tot.today ? 'press-td' : '', `${tot.today || 0} TODAY`));
 
-    // Story lines: overdue first, then today, then the soonest event, then the rest.
+    // Story cards: overdue first, then today, then the soonest event, then the rest.
     const rank = st => st.old_builder ? 3 : st.overdue ? 0 : st.today ? 1 : 2;
     const when = st => { const t = Date.parse(st.countdown_to); return t > 0 ? t : Infinity; };
-    const lines = stories.slice().sort((a, b) => rank(a) - rank(b) || when(a) - when(b)).slice(0, 3);
-    const list = document.createElement('div');
-    list.className = 'press-stories';
-    lines.forEach(st => {
-      const row = document.createElement('div');
-      row.className = 'press-story' + (st.overdue ? ' overdue' : st.today ? ' today' : '');
-      row.append(el('nm', st.short_name.toUpperCase()));
-      if (st.overdue) row.append(' · ', el('press-od', `${st.overdue} OVERDUE`));
-      if (st.today)   row.append(' · ', el('press-td', `${st.today} TODAY`));
-      if (!st.overdue && !st.today) row.append(' · ' + String(st.status || '').toUpperCase());
-      list.append(row);
+    const shown = stories.slice().sort((a, b) => rank(a) - rank(b) || when(a) - when(b)).slice(0, 3);
+    shown.forEach(st => {
+      const card = el('div', 'wx-card press-card' + (st.overdue ? ' overdue' : st.today ? ' today' : ''),
+        el('div', 'wx-city', span('', st.short_name.toUpperCase()), span('', String(st.doc || '').toUpperCase())));
+      if (st.old_builder) {
+        card.append(el('div', 'press-line', 'OLD BUILDER'));
+        cards.push(card);
+        return;
+      }
+      const [done, total] = st.progress || [];
+      if (total) {
+        const track = el('div', '', el('i'));
+        track.style.setProperty('--seg', total);
+        track.firstChild.style.width = `${100 * done / total}%`;
+        card.append(el('div', 'press-bar', track, span('', `${done}/${total}`)));
+      }
+      const counts = [];
+      if (st.overdue) counts.push(span('press-od', `${st.overdue} OVERDUE`));
+      if (st.today)   counts.push(counts.length ? sep() : '', span('press-td', `${st.today} TODAY`));
+      if (!counts.length) counts.push(st.upcoming ? `${st.upcoming} UPCOMING` : 'NOTHING DUE');
+      card.append(el('div', 'press-line', ...counts));
+      const send = (st.sends_open || [])[0];
+      if (st.next && st.next.text) {
+        card.append(el('div', 'press-line' + (st.next.state === 'late' ? ' press-late' : ''), '▸ ' + st.next.text.toUpperCase()));
+      } else if (send) {
+        card.append(el('div', 'press-line', '▸ ' + send.label.toUpperCase() + (Date.parse(send.due) ? ' · ' + pressWhen(Date.parse(send.due)) : '')));
+      }
+      cards.push(card);
     });
-    body.replaceChildren(top, list);
+    // The countdown takes two weather columns; the stories share the rest of the row.
+    const cols = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--wx-cols')) || 8;
+    const width = Math.min(cols, Math.max(2, Math.floor((cols - 2) / Math.max(1, shown.length))));
+    cards.slice(1).forEach(c => c.style.setProperty('--span', width));
+    if (stories.length > shown.length) head.lastChild.append(sep(), span('', `+${stories.length - shown.length} MORE`));
+    body.replaceChildren(el('div', 'press-grid', ...cards));
   }
 
   async function loadPress() {

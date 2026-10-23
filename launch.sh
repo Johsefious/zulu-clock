@@ -11,11 +11,14 @@ echo "  ZULU CLOCK v1"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # If the port is taken, stop the holder only when it is Zulu Clock's own server
-# (the one started below, serving this folder). Anything else is left alone.
-OWN_CMD="-m http.server $PORT --directory $SCRIPT_DIR --bind 127.0.0.1"
+# (the one started below, or the plain http.server earlier versions started,
+# serving this folder). Anything else is left alone.
+OWN_CMD="$SCRIPT_DIR/server.py $PORT $SCRIPT_DIR"
+OLD_CMD="-m http.server $PORT --directory $SCRIPT_DIR --bind 127.0.0.1"
 HOLDERS="$(lsof -ti tcp:$PORT -sTCP:LISTEN 2>/dev/null || true)"
 for PID in $HOLDERS; do
-    if [[ "$(ps -o command= -p "$PID" 2>/dev/null)" == *"$OWN_CMD"* ]]; then
+    HOLDER_CMD="$(ps -o command= -p "$PID" 2>/dev/null)"
+    if [[ "$HOLDER_CMD" == *"$OWN_CMD"* || "$HOLDER_CMD" == *"$OLD_CMD"* ]]; then
         echo "  Port $PORT: stopping the earlier Zulu Clock server (pid $PID)"
         kill "$PID" 2>/dev/null || true
         for _ in 1 2 3 4 5 6 7 8 9 10; do
@@ -34,7 +37,8 @@ if command -v python3 >/dev/null 2>&1; then
     echo "  Server : $URL"
     echo "  Stop   : Ctrl+C"
     echo ""
-    python3 -m http.server $PORT --directory "$SCRIPT_DIR" --bind 127.0.0.1 >/dev/null 2>&1 &
+    # server.py serves this folder and fetches the news feeds for the ticker
+    python3 "$SCRIPT_DIR/server.py" $PORT "$SCRIPT_DIR" >/dev/null 2>&1 &
     SERVER_PID=$!
     sleep 0.6
     open "$URL"
