@@ -43,7 +43,7 @@ if command -v python3 >/dev/null 2>&1; then
     echo "  Server : $URL"
     echo "  Stop   : Ctrl+C"
     echo ""
-    # server.py serves this folder and fetches the news feeds for the ticker
+    # server.py serves this folder and makes every outside call the clock needs
     python3 "$SCRIPT_DIR/server.py" $PORT "$SCRIPT_DIR" >/dev/null 2>&1 &
     SERVER_PID=$!
     sleep 0.6

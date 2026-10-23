@@ -621,7 +621,7 @@
     <div class="topbar">
       <div class="status-left">
         <span class="dot"></span>
-        TACTICAL TIME DISPLAY &mdash; <span id="sys-status">ALL SYSTEMS NOMINAL</span>
+        TACTICAL TIME DISPLAY &mdash; <span id="sys-status">SOURCES: CHECKING&hellip;</span>
         &nbsp;<span id="feed-status">&#9679; FEED: LOADING&hellip;</span><span id="feed-countdown"></span>
       </div>
       <div class="status-right">
@@ -677,7 +677,7 @@
 
     <!-- Weather -->
     <div class="wx-section">
-      <div class="section-head">CALIFORNIA WEATHER INTEL &mdash; OPEN-METEO LIVE</div>
+      <div class="section-head">CALIFORNIA WEATHER INTEL &mdash; <span id="wx-status">OPEN-METEO</span></div>
       <div class="wx-grid" id="wx-grid"></div>
     </div>
 
@@ -816,23 +816,18 @@
     { id:'sandiego',    label:'SAN DIEGO',   lat:32.7157, lon:-117.1611, metar:'KSAN' },
   ];
 
-  // RSS headlines — the local server first, then two public proxies:
-  //   1. server.py /news/<TAG> (launch.sh; fetches Google News itself)
-  //   2. rss2json.com  (JSON, no key, free 10k req/day)
-  //   3. allorigins.win (raw XML fallback, handles null origin from file://)
-  // Google News RSS — proxy-agnostic, never blocks scrapers, updates ~15 min
+  // Google News RSS, read through server.py (browsers can't read it directly)
   const RSS_FEEDS = [
-    { tag:'WORLD', cls:'ntag-world', url:'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en&gl=US&ceid=US:en' },
-    { tag:'US',    cls:'ntag-us',    url:'https://news.google.com/rss/headlines/section/topic/NATION?hl=en&gl=US&ceid=US:en' },
-    { tag:'CA',    cls:'ntag-ca',    url:'https://news.google.com/rss/search?q=california+news&hl=en&gl=US&ceid=US:en' },
+    { tag:'WORLD', cls:'ntag-world', source:'news-world', query:'hl=en&gl=US&ceid=US:en' },
+    { tag:'US',    cls:'ntag-us',    source:'news-us',    query:'hl=en&gl=US&ceid=US:en' },
+    { tag:'CA',    cls:'ntag-ca',    source:'news-ca',    query:'q=california+news&hl=en&gl=US&ceid=US:en' },
   ];
-  const RSS2JSON_BASE   = 'https://api.rss2json.com/v1/api.json?count=10&rss_url=';
-  const ALLORIGINS_BASE = 'https://api.allorigins.win/get?url=';
   const WX_REFRESH_MS   = 20 * 60 * 1000;
   const NEWS_REFRESH_MS = 5  * 60 * 1000;
   const SA_REFRESH_MS   = 4  * 60 * 1000;  // sit-aware: 4 min
   const SA_DWELL_MS     = 3500;             // ms per alert card before cycling
-  const PRESS_URL       = 'http://127.0.0.1:8771';  // the Presser app (its default port)
+  const PRESS_URL       = 'http://127.0.0.1:8771';  // the Presser app (its default port), opened on click
+  const STATUS_REFRESH_MS = 60 * 1000;
   const PRESS_REFRESH_MS = 60 * 1000;
   const MISSIONS_REFRESH_MS = 2 * 60 * 1000;
   const TICKER_PX_PER_FRAME = 1.3;
@@ -847,24 +842,57 @@
   let   saAlerts         = [];
   let   saIdx            = 0;
   let   saCycleTmr       = null;
+  let   statusData       = null;   // server.py's /status: how each source's latest calls went
 
-  function updateSysStatus() {
-    const el = document.getElementById('sys-status');
-    if (!el) return;
-    const degraded = [wxDegraded, intelFeedDegraded, sunsetDegraded, saDegraded].filter(Boolean).length;
-    if (degraded >= 2) {
-      el.innerHTML = `<span style="color:var(--amber)">SYSTEMS DEGRADED</span>`;
-    } else if (wxDegraded) {
-      el.innerHTML = `<span style="color:var(--amber)">WEATHER DEGRADED</span>`;
-    } else if (intelFeedDegraded) {
-      el.innerHTML = `<span style="color:var(--amber)">INTEL FEED OFFLINE</span>`;
-    } else if (sunsetDegraded) {
-      el.innerHTML = `<span style="color:var(--amber)">SOLAR DATA OFFLINE</span>`;
-    } else if (saDegraded) {
-      el.innerHTML = `<span style="color:var(--amber)">SIT AWARE DEGRADED</span>`;
+  // Every outside call goes through server.py, which records how it went for /status.
+  function src(name, query = '') { return `/source/${name}${query ? '?' + query : ''}`; }
+
+  // ─────────────────────────────────────────────────────────────
+  //  STATUS — every status word on the clock comes from /status, naming its source
+  // ─────────────────────────────────────────────────────────────
+  const SA_SOURCES = ['usgs', 'nws', 'nhc', 'eonet', 'nifc', 'who', 'swpc'];
+  function statusOf(name) { return statusData?.sources.find(s => s.name === name) || null; }
+  function utcHM(iso) { const d = new Date(iso); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}Z`; }
+  // One source's status as a line: "NIFC FAILING: HTTP 503", "OPEN-METEO 9/9 ANSWERED 17:10Z".
+  function statusLine(s) {
+    const name = s.label.toUpperCase();
+    if (s.state === 'answering') return `${name} ${s.answered}/${s.calls} ANSWERED ${utcHM(s.last_call_at)}`;
+    if (s.state === 'partial')   return `${name} ${s.answered}/${s.calls} ANSWERED: ${s.error.toUpperCase()}`;
+    if (s.state === 'failing')   return `${name} FAILING: ${s.error.toUpperCase()}`;
+    if (s.state === 'not connected') return `${name} NOT CONNECTED`;
+    return `${name} NOT CALLED YET`;
+  }
+  const amber = html => `<span style="color:var(--amber)">${html}</span>`;
+
+  async function loadStatus() {
+    try {
+      const r = await fetchT('/status', 5000);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      statusData = await r.json();
+    } catch { statusData = null; }
+    renderStatus();
+  }
+
+  function renderStatus() {
+    const sys = document.getElementById('sys-status');
+    if (!statusData) {
+      sys.innerHTML = amber('STATUS UNKNOWN: SERVER.PY NOT ANSWERING');
     } else {
-      el.innerHTML = `ALL SYSTEMS NOMINAL`;
+      const called = statusData.sources.filter(s => s.state !== 'not called');
+      const bad    = called.filter(s => s.state !== 'answering');
+      sys.innerHTML = !bad.length
+        ? `${called.length} OF ${called.length} SOURCES ANSWERING`
+        : amber(`${called.length - bad.length} OF ${called.length} SOURCES ANSWERING &mdash; ` +
+            bad.slice(0, 2).map(s => `${s.label.toUpperCase()} ${s.state.toUpperCase()}`).join(' &middot; ') +
+            (bad.length > 2 ? ` +${bad.length - 2}` : ''));
     }
+    const om = statusOf('open-meteo');
+    const wx = document.getElementById('wx-status');
+    wx.innerHTML = om ? (om.state === 'answering' ? statusLine(om) : amber(statusLine(om))) : 'OPEN-METEO';
+    renderFeedStatus();
+    rebuildTicker();
+    if (!saAlerts.length) saRenderItem(null);
+    if (!missionsData) missionsRender();
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -998,10 +1026,10 @@
   async function fetchAllSunsets() {
     const results = await Promise.all(ZONES.map(async (z) => {
       try {
-        const url = `https://api.open-meteo.com/v1/forecast` +
-          `?latitude=${z.lat}&longitude=${z.lon}` +
-          `&daily=sunrise,sunset&forecast_days=2&timezone=${encodeURIComponent(z.zone)}`;
-        const r    = await fetchT(url, 9000);
+        const url = src('open-meteo', `latitude=${z.lat}&longitude=${z.lon}` +
+          `&daily=sunrise,sunset&forecast_days=2&timezone=${encodeURIComponent(z.zone)}`);
+        const r    = await fetchT(url, 15000);
+        if (!r.ok) return false;
         const data = await r.json();
         const rises = data.daily?.sunrise;
         const sets  = data.daily?.sunset;
@@ -1018,7 +1046,6 @@
     }));
     sunsetDegraded = results.some(r => r === false);
     updateSolarDisplay();
-    updateSysStatus();
   }
 
   function wxDesc(c) {
@@ -1121,8 +1148,7 @@
   async function fetchMetar() {
     try {
       const ids = WX_LOCS.map(l => l.metar).join(',');
-      const r   = await fetchT(
-        `https://aviationweather.gov/api/data/metar?ids=${ids}&format=json`, 10000);
+      const r   = await fetchT(src('metar', `ids=${ids}&format=json`), 15000);
       const arr = await r.json();
       const map = {};
       arr.forEach(m => { map[m.icaoId] = m; });
@@ -1135,13 +1161,12 @@
   async function fetchWx(loc, metarMap) {
     const el = document.getElementById(`wx-${loc.id}`);
     try {
-      const url = `https://api.open-meteo.com/v1/forecast` +
-        `?latitude=${loc.lat}&longitude=${loc.lon}` +
+      const url = src('open-meteo', `latitude=${loc.lat}&longitude=${loc.lon}` +
         `&current=temperature_2m,weather_code,wind_speed_10m,precipitation` +
         `&hourly=temperature_2m,wind_speed_10m,precipitation` +
         `&temperature_unit=fahrenheit&wind_speed_unit=mph` +
-        `&forecast_days=2&timezone=America%2FLos_Angeles`;
-      const r    = await fetchT(url);
+        `&forecast_days=2&timezone=America%2FLos_Angeles`);
+      const r    = await fetchT(url, 15000);
       const data = await r.json();
       const c    = data.current;
       const temp = Math.round(c.temperature_2m);
@@ -1270,7 +1295,6 @@
     wxDegraded     = results.some(r => !r.ok);
     wxAlerts       = results.flatMap(r => r.alerts);
     rebuildTicker();
-    updateSysStatus();
     window._loaderMark && window._loaderMark('wx');
   }
 
@@ -1284,17 +1308,11 @@
   let   tickerVelocity = 0;              // eases from 0 → TICKER_PX_PER_FRAME on resume
   let   tickerResumeTimer = null;
 
-  const SYS_ITEMS = [
-    'SIGNAL ACQUIRED',
-    'CLOCK SYNCHRONIZED TO UTC',
-    'WEATHER NODES ONLINE',
-    'ALL FREQUENCIES NOMINAL',
-    'GEOLOCATION LOCKED',
-    'ENCRYPTION HANDSHAKE COMPLETE',
-  ];
-
-  function buildSysHTML() {
-    return SYS_ITEMS.map(s =>
+  function buildSysHTML(all) {
+    const lines = statusData
+      ? statusData.sources.filter(s => all || (s.state !== 'answering' && s.state !== 'not called')).map(statusLine)
+      : ['STATUS UNKNOWN: SERVER.PY NOT ANSWERING'];
+    return lines.map(s =>
       `<span class="ntag ntag-sys">[SYS]</span>&nbsp;${s}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`
     ).join('');
   }
@@ -1336,8 +1354,8 @@
     const saHtml   = buildSaTickerHTML(saAlerts);
     const wxHtml   = buildWxAlertHTML(wxAlerts);
     const newsHtml = currentHeadlines.length
-      ? buildNewsHTML(currentHeadlines)
-      : buildSysHTML();
+      ? buildNewsHTML(currentHeadlines) + buildSysHTML(false)
+      : buildSysHTML(true);
     tickerEl.innerHTML = saHtml + wxHtml + newsHtml;
   }
 
@@ -1383,49 +1401,10 @@
     })).filter(h => h.title);
   }
 
-  // Source 1: the local server started by launch.sh (not there when opened as a file)
-  async function fetchViaLocal(feed) {
-    if (!location.protocol.startsWith('http')) throw new Error('local: opened as a file');
-    const r = await fetchT('/news/' + feed.tag, 12000);
-    if (!r.ok) throw new Error(`local ${r.status}`);
-    return parseRssXml(await r.text());
-  }
-
-  // Proxy 1: rss2json.com → returns JSON (fastest, has 10k/day free tier)
-  async function fetchViaRss2Json(feed) {
-    const r    = await fetchT(RSS2JSON_BASE + encodeURIComponent(feed.url), 12000);
-    if (!r.ok) throw new Error(`rss2json ${r.status}`);
-    const data = await r.json();
-    if (data.status !== 'ok') throw new Error(`rss2json bad status`);
-    if (!data.items?.length)  throw new Error('rss2json: empty');
-    return data.items.slice(0, 10).map(i => ({
-      title: sanitize(i.title.replace(/ - [^-]+$/, '')),
-      url:   i.link || '',
-    }));
-  }
-
-  // Proxy 2: allorigins.win → returns raw content, parse XML locally
-  async function fetchViaAllOrigins(feed) {
-    const r       = await fetchT(ALLORIGINS_BASE + encodeURIComponent(feed.url), 12000);
-    if (!r.ok)    throw new Error(`allorigins ${r.status}`);
-    const wrapper = await r.json();
-    if (!wrapper.contents) throw new Error('allorigins: empty');
-    return parseRssXml(wrapper.contents);
-  }
-
   async function fetchFeed(feed) {
-    const PROXIES = [fetchViaLocal, fetchViaRss2Json, fetchViaAllOrigins];
-    const errors  = [];
-    for (const fn of PROXIES) {
-      try {
-        const items = await fn(feed);
-        return items.map(i => ({ tag: feed.tag, cls: feed.cls, title: i.title, url: i.url }));
-      } catch(e) {
-        errors.push(e.message);
-        console.warn(`[${feed.tag}] ${fn.name}: ${e.message}`);
-      }
-    }
-    throw new Error(`SIGNAL LOST (${errors.slice(-1)[0]})`);
+    const r = await fetchT(src(feed.source, feed.query), 15000);
+    if (!r.ok) throw new Error(`server.py ${r.status}`);
+    return parseRssXml(await r.text()).map(i => ({ tag: feed.tag, cls: feed.cls, title: i.title, url: i.url }));
   }
 
   function setFeedStatus(html) {
@@ -1433,9 +1412,24 @@
     document.getElementById('feed-status').innerHTML = html;
   }
 
+  // The feed line: headline count from the page, each feed's state from /status.
+  function renderFeedStatus() {
+    const feeds = RSS_FEEDS.map(f => statusOf(f.source)).filter(Boolean);
+    if (!feeds.length) return;
+    const bad   = feeds.filter(s => s.state !== 'answering');
+    const count = currentHeadlines.length ? `${currentHeadlines.length} HEADLINES &mdash; ` : '';
+    if (!bad.length) {
+      const last = feeds.map(s => s.last_call_at).sort().pop();
+      setFeedStatus(`◆ INTEL FEED <span style="color:var(--red);letter-spacing:2px">LIVE</span>: ${count}` +
+        `GOOGLE NEWS ${feeds.length}/${feeds.length} ANSWERED ${utcHM(last)}`);
+    } else {
+      setFeedStatus(`◆ INTEL FEED ` + amber(bad.length === feeds.length ? 'NO SIGNAL' : 'PARTIAL') + `: ${count}` +
+        bad.map(statusLine).join(' &middot; '));
+    }
+  }
+
   async function loadHeadlines() {
     fetchCount++;
-    setFeedStatus('◆ INTEL FEED: FETCHING&hellip;');
 
     const results = await Promise.allSettled(RSS_FEEDS.map(fetchFeed));
     const items   = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
@@ -1449,29 +1443,14 @@
 
     nextNewsRefreshAt   = Date.now() + NEWS_REFRESH_MS;
     intelFeedDegraded   = (items.length === 0);
-    updateSysStatus();
 
     if (items.length > 0) {
       currentHeadlines = items;
       rebuildTicker();
-      const now  = new Date();
-      const hhmm = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}Z`;
-      // LIVE = red (all feeds OK), PARTIAL = amber (some feeds degraded), rest = green
-      const liveWord = failed.length === 0
-        ? `<span style="color:var(--red);letter-spacing:2px">LIVE</span>`
-        : `<span style="color:var(--amber);letter-spacing:2px">PARTIAL</span>`;
-      const src = failed.length > 0
-        ? ` [${failed.length}/${RSS_FEEDS.length} FEEDS DEGRADED]` : '';
-      setFeedStatus(`◆ INTEL FEED ${liveWord}: ${items.length} HEADLINES &mdash; ${hhmm} &mdash; FETCH #${fetchCount}${src}`);
       if (failed.length) console.warn(`${failed.length} feeds degraded — see console.`);
     } else {
-      // Total blackout — clean tactical message, raw error to console only
       console.error('All news feeds failed:', results.map((r,i) =>
         `[${RSS_FEEDS[i].tag}] ${r.reason?.message}`).join(' | '));
-      setFeedStatus(
-        `◆ INTEL FEED <span style="color:var(--amber);letter-spacing:2px">NO SIGNAL</span>` +
-        ` &mdash; ACQUISITION FAILED`
-      );
     }
     window._loaderMark && window._loaderMark('news');
   }
@@ -1498,7 +1477,7 @@
 
   async function saFetchSeismic() {
     try {
-      const r    = await fetchT('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson', 10000);
+      const r    = await fetchT(src('usgs'), 15000);
       const data = await r.json();
       const ca   = data.features.filter(f => {
         const [lon, lat] = f.geometry.coordinates;
@@ -1520,7 +1499,7 @@
 
   async function saFetchNwsAlerts() {
     try {
-      const r    = await fetchT('https://api.weather.gov/alerts/active?area=CA', 10000);
+      const r    = await fetchT(src('nws', 'area=CA'), 15000);
       const data = await r.json();
       const hits  = (data.features || []).filter(f =>
         f.properties.severity === 'Extreme' || f.properties.severity === 'Severe');
@@ -1538,7 +1517,7 @@
 
   async function saFetchStorms() {
     try {
-      const r     = await fetchT('https://www.nhc.noaa.gov/CurrentStorms.json', 10000);
+      const r     = await fetchT(src('nhc'), 15000);
       const data  = await r.json();
       const storms = data.activeStorms || [];
       if (!storms.length) return [];
@@ -1563,7 +1542,7 @@
 
   async function saFetchEonet() {
     try {
-      const r    = await fetchT('https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=25', 10000);
+      const r    = await fetchT(src('eonet', 'status=open&limit=25'), 15000);
       const data = await r.json();
       // Wildfires handled by saFetchCAWildfires (NIFC); EONET covers other global events
       const WANT = { 'Volcanoes':3, 'Severe Storms':2, 'Floods':2 };
@@ -1603,11 +1582,9 @@
       const where = encodeURIComponent(
         "POOState='US-CA' AND IncidentTypeCategory='WF' AND DiscoveryAcres>=10"
       );
-      const url = 'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/' +
-        'WFIGS_Incident_Locations_Current/FeatureServer/0/query' +
-        `?where=${where}&outFields=IncidentName,DiscoveryAcres,PercentContained,POOCounty` +
-        '&orderByFields=DiscoveryAcres+DESC&resultRecordCount=5&f=json';
-      const r    = await fetchT(url, 10000);
+      const url = src('nifc', `where=${where}&outFields=IncidentName,DiscoveryAcres,PercentContained,POOCounty` +
+        '&orderByFields=DiscoveryAcres+DESC&resultRecordCount=5&f=json');
+      const r    = await fetchT(url, 15000);
       const data = await r.json();
       if (data.error) return [];
       const fires = (data.features || []).map(f => f.attributes).filter(f => f.IncidentName);
@@ -1627,10 +1604,8 @@
   async function saFetchHealth() {
     try {
       // WHO removed the dedicated DON RSS; use general news feed and filter for outbreaks
-      const url  = 'https://www.who.int/rss-feeds/news-english.xml';
-      const r    = await fetchT(ALLORIGINS_BASE + encodeURIComponent(url), 12000);
-      const data = await r.json();
-      const doc  = new DOMParser().parseFromString(data.contents || '', 'text/xml');
+      const r    = await fetchT(src('who'), 15000);
+      const doc  = new DOMParser().parseFromString(await r.text(), 'text/xml');
       if (doc.querySelector('parsererror')) return [];
       const OUTBREAK_RE = /outbreak|disease|virus|epidemic|influenza|flu|h5n1|h5n2|bird flu|avian flu|mpox|measles|dengue|ebola|filovirus|hantavirus|cholera|typhoid|plague|marburg|avian|zoonot/i;
       const cutoff = Date.now() - 7 * 86400000; // show items up to 7 days old
@@ -1651,7 +1626,7 @@
 
   async function saFetchSpace() {
     try {
-      const r    = await fetchT('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json', 8000);
+      const r    = await fetchT(src('swpc'), 15000);
       const rows = await r.json();
       // rows[0] is headers; latest is last row
       const latest = rows[rows.length - 1];
@@ -1665,14 +1640,33 @@
   }
 
 
+  // With no alerts: only "ALL CLEAR" when every SA source answered; otherwise say which didn't.
+  function saClearSources() { return SA_SOURCES.map(statusOf).filter(Boolean); }
+  function saClearBad() { return saClearSources().filter(s => s.state !== 'answering'); }
+  function saClearCat() {
+    if (!statusData) return 'NO ALERTS';
+    return saClearBad().length ? amber('NO ALERTS') : 'ALL CLEAR';
+  }
+  function saClearHeadline() {
+    if (!statusData) return 'SOURCE STATUS<br>UNKNOWN';
+    const all = saClearSources(), ok = all.length - saClearBad().length;
+    return `${ok} OF ${all.length} SOURCES<br>ANSWERING`;
+  }
+  function saClearDetail() {
+    if (!statusData) return 'SERVER.PY NOT ANSWERING';
+    const bad = saClearBad();
+    return bad.length ? amber(bad.map(s => `${s.label.toUpperCase()} ${s.state.toUpperCase()}`).join(' · '))
+                      : saClearSources().map(s => s.label.toUpperCase()).join(' · ');
+  }
+
   function saRenderItem(alert) {
     const el = document.getElementById('sa-item');
     if (!alert) {
       el.innerHTML = `
         <div class="sa-symbol" style="color:rgba(var(--fg-rgb),0.18)">◆</div>
-        <div class="sa-cat"    style="color:rgba(var(--fg-rgb),0.28)">ALL CLEAR</div>
-        <div class="sa-headline" style="font-size:18px;color:rgba(var(--fg-rgb),0.28)">ALL SOURCES<br>NOMINAL</div>
-        <div class="sa-detail">7 FEEDS MONITORED</div>`;
+        <div class="sa-cat"    style="color:rgba(var(--fg-rgb),0.28)">${saClearCat()}</div>
+        <div class="sa-headline" style="font-size:18px;color:rgba(var(--fg-rgb),0.28)">${saClearHeadline()}</div>
+        <div class="sa-detail">${saClearDetail()}</div>`;
       requestAnimationFrame(fitSaPanel);
       return;
     }
@@ -1745,7 +1739,6 @@
     saIdx         = 0;
     saStartCycle();
     rebuildTicker();
-    updateSysStatus();
     window._loaderMark && window._loaderMark('sa');
   }
 
@@ -1790,7 +1783,8 @@
     sec.href = PRESS_URL + '/';
     if (!pressData) {
       sec.classList.add('press-off');
-      head.textContent = 'PRESS: app not running';
+      const ps = statusOf('presser');
+      head.textContent = 'PRESS: ' + (ps && ps.state !== 'not called' ? statusLine(ps) : 'app not running');
       body.replaceChildren();
       return;
     }
@@ -1869,7 +1863,8 @@
     const body = document.getElementById('missions-body');
     if (!head || !body) return;
     if (!missionsData) {
-      head.textContent = 'MISSIONS: ' + missionsNote;
+      const ms = statusOf('mission-cmd');
+      head.textContent = 'MISSIONS: ' + (ms && ms.state !== 'not called' ? statusLine(ms) : missionsNote);
       body.replaceChildren();
       return;
     }
@@ -1939,7 +1934,7 @@
     const ctl = new AbortController();
     const to  = setTimeout(() => ctl.abort(), 5000);
     try {
-      const r = await fetch(PRESS_URL + '/api/summary', { signal: ctl.signal, cache: 'no-store' });
+      const r = await fetch(src('presser'), { signal: ctl.signal, cache: 'no-store' });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const d = await r.json();
       if (!Array.isArray(d.stories)) throw new Error('not a summary');
@@ -2009,12 +2004,13 @@
   // through RETRY_MS if still degraded, finally handing off to setInterval at normalMs.
   function launchWithRetry(fn, isStillDegraded, normalMs, initialDelayMs) {
     const RETRY_MS = [6000, 18000, 45000, 120000];
+    const run = async () => { await fn(); loadStatus(); };
     async function attempt(idx) {
-      await fn();
+      await run();
       if (isStillDegraded() && idx < RETRY_MS.length) {
         setTimeout(() => attempt(idx + 1), RETRY_MS[idx]);
       } else {
-        setInterval(fn, normalMs);
+        setInterval(run, normalMs);
       }
     }
     if (initialDelayMs) setTimeout(() => attempt(0), initialDelayMs);
@@ -2027,6 +2023,7 @@
   launchWithRetry(loadSitAware,   () => saDegraded,          SA_REFRESH_MS,    1200);
   launchWithRetry(loadPress,      () => false,               PRESS_REFRESH_MS, 1500);
   launchWithRetry(loadMissions,   () => false,               MISSIONS_REFRESH_MS, 1700);
+  setInterval(loadStatus, STATUS_REFRESH_MS);
 
   </script>
 </body>
