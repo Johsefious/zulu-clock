@@ -8,15 +8,28 @@ A full-screen tactical time display for macOS. Built as a single self-contained 
 |---|---|---|
 | **Primary clock** | UTC/Zulu time (HH:MM:SSZ) | System clock |
 | **Timezone row** | Los Angeles · Denver · Chicago · New York · London | System clock |
-| **Moon phase** | Phase name, illumination %, rise/set | Calculated (no API) |
+| **Moon phase** | Phase name, illumination %, rise/set; click it to change mode | Calculated (no API) |
 | **California weather** | Berkeley · Fresno · Tulare · Los Angeles — temp, feels-like, condition | [Open-Meteo](https://open-meteo.com) (free, no key) |
 | **News ticker** | Live World / US / CA headlines | Google News RSS, fetched by `server.py` |
-| **Press** | A countdown to the next event, then a card per story: checks done, overdue and due today, and the next step; click to open the Presser app | Presser app at `http://127.0.0.1:8771` (local) |
+| **Press** | A card per story: checks done, overdue and due today, and the next step. The story with the nearest event comes first, with its countdown. Click to open the Presser app | Presser app at `http://127.0.0.1:8771` (local) |
+| **Missions** | The next four FS missions: days to go, first names, type, confirmed / briefing / plan ticks, and when the plan is due or late. Red when a mission is two days out with no approved plan | Mission cmd's `mmGetMissions`, through `server.py` |
 | **SA panel** | Rotating situational awareness alerts (see below) | Multiple (see below) |
 
 Weather refreshes every 20 minutes. Headlines refresh every 5 minutes.
 
 The Press section reads the Presser app's `/api/summary` every minute and stores nothing. It shows "PRESS: app not running" when the app does not answer. The address is the `PRESS_URL` constant at the top of the script; the app allows the clock only from `http://localhost:8769` (what `launch.sh` opens), not from a file.
+
+## Missions
+
+The clock reads missions only through Mission cmd's own `mmGetMissions` endpoint (fs-coordination), never from the sheet. `server.py` passes it on at `/missions` every 2 minutes and keeps nothing. It shows first names, dates and mission types, never facilities.
+
+`server.py` calls `POST <MISSIONS_CALL>/call/mmGetMissions`, where `MISSIONS_CALL` is an environment variable. Mission cmd has no way in from outside the page yet (its Task 6), so for now the section says "Mission cmd not connected". Mission cmd's read-only preview (`node tools/preview.js <snapshot> 8790` in fs-coordination) speaks the same calls, so `MISSIONS_CALL=http://127.0.0.1:8790 ./launch.sh` shows a snapshot's missions.
+
+## Modes
+
+Three looks: **green** (the original), **pink** (white on hot pink) and **blue** (ice blue on deep navy). Click the moon or press `M` to go to the next one. The clock remembers the last mode picked in that browser.
+
+To open in a given mode, run `./launch.sh pink` (or `green`, `blue`), or add `?mode=pink` to the address. `./launch-pink.sh` does the first; it replaces the separate Pink Clock page, which was a copy of this one in pink.
 
 ## Situational Awareness (SA) data sources
 
@@ -89,5 +102,6 @@ zulu-clock/
 ├── README.md
 ├── zulu-clock.html   ← the entire app (single file)
 ├── server.py         ← local server: serves the page, fetches the news feeds
-└── launch.sh         ← macOS launcher (starts server.py + opens browser)
+├── launch.sh         ← macOS launcher (starts server.py + opens browser)
+└── launch-pink.sh    ← the same, opening in pink mode
 ```

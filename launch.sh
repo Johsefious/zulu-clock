@@ -5,6 +5,12 @@
 PORT=8769
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 URL="http://localhost:$PORT/zulu-clock.html"
+# Optional mode: ./launch.sh pink (or green, blue). Without one, the clock opens in the last mode picked.
+case "${1:-}" in
+    green|pink|blue) URL="$URL?mode=$1" ;;
+    "") ;;
+    *) echo "  Unknown mode '$1' (use green, pink or blue)"; exit 1 ;;
+esac
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  ZULU CLOCK v1"

@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ZULU TIME // TACTICAL DISPLAY</title>
+  <script>
+    // Mode: ?mode=green|pink|blue in the address, else the last one picked here, else green.
+    (function() {
+      let m = new URLSearchParams(location.search).get('mode');
+      if (!m) { try { m = localStorage.getItem('zulu-mode'); } catch {} }
+      if (m === 'pink' || m === 'blue') document.documentElement.dataset.mode = m;
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
   <style>
@@ -12,11 +20,13 @@
       --green:       #00ff41;
       --green-dim:   #00a828;
       --green-dark:  #003a0e;
-      --green-glow:  rgba(0,255,65,0.25);
+      --green-glow:  rgba(var(--fg-rgb),0.25);
       --amber:       #ffb700;
       --cyan:        #00eeff;
       --red:         #ff3c3c;
       --bg:          #000;
+      --fg-rgb:      0,255,65;          /* --green as r,g,b, for the faint tints */
+      --moon-body:   rgba(0,18,6,1);
 
       --pad-v:       10px;
       --pad-h:       20px;
@@ -56,6 +66,30 @@
         --tz-size: clamp(24px, 2vw, 30px);
         --wx-temp-size: clamp(30px, 2.8vw, 44px);
       }
+    }
+
+    /* ── Modes: click the moon or press M. Green is the default above. ─── */
+    html[data-mode="pink"] {
+      --green:       #ffffff;
+      --green-dim:   rgba(255,255,255,0.65);
+      --green-dark:  rgba(255,255,255,0.12);
+      --green-glow:  rgba(255,255,255,0.3);
+      --amber:       #ffffff;
+      --cyan:        #ffffff;
+      --red:         #ffffff;
+      --bg:          #c5006b;
+      --fg-rgb:      255,255,255;
+      --moon-body:   rgba(140,0,60,1);
+    }
+    html[data-mode="blue"] {
+      --green:       #3ad7ff;
+      --green-dim:   #1f8fc4;
+      --green-dark:  #06284a;
+      --green-glow:  rgba(58,215,255,0.3);
+      --cyan:        #c8f2ff;
+      --bg:          #010915;
+      --fg-rgb:      58,215,255;
+      --moon-body:   rgba(3,20,42,1);
     }
 
     /* ── Narrow screens ─── */
@@ -107,8 +141,8 @@
     .grid-bg {
       position: fixed; inset: 0;
       background-image:
-        linear-gradient(rgba(0,255,65,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,255,65,0.04) 1px, transparent 1px);
+        linear-gradient(rgba(var(--fg-rgb),0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(var(--fg-rgb),0.04) 1px, transparent 1px);
       background-size: 50px 50px;
       z-index: 0;
       pointer-events: none;
@@ -145,7 +179,7 @@
       font-family: 'VT323', monospace;
       font-size: 60px; /* overridden by fitSaPanel() */
       line-height: 1;
-      filter: drop-shadow(0 0 5px rgba(0,255,65,0.2));
+      filter: drop-shadow(0 0 5px rgba(var(--fg-rgb),0.2));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -155,13 +189,13 @@
     .sa-cat {
       font-size: var(--tz-city-size);
       letter-spacing: 2.5px;
-      color: rgba(0,255,65,0.42);
+      color: rgba(var(--fg-rgb),0.42);
       margin-top: 3px;
     }
     .sa-headline {
       font-family: 'VT323', monospace;
       font-size: clamp(16px, 1.25vw, 22px);
-      color: rgba(0,255,65,0.5);
+      color: rgba(var(--fg-rgb),0.5);
       letter-spacing: 1px;
       line-height: 1.15;
       margin-top: 4px;
@@ -183,10 +217,10 @@
     .sa-dot {
       width: 5px; height: 5px;
       border-radius: 50%;
-      background: rgba(0,255,65,0.18);
+      background: rgba(var(--fg-rgb),0.18);
       transition: background 0.3s;
     }
-    .sa-dot.active { background: rgba(0,255,65,0.7); box-shadow: 0 0 4px rgba(0,255,65,0.5); }
+    .sa-dot.active { background: rgba(var(--fg-rgb),0.7); box-shadow: 0 0 4px rgba(var(--fg-rgb),0.5); }
     @media (max-width: 680px) { .sa-block { display: none; } }
 
     /* Flicker lives on its own pointer-events:none overlay so .shell stays off
@@ -238,8 +272,8 @@
       50%      { opacity: .25; transform: scale(.65); }
     }
 
-    #feed-status   { color: rgba(0,255,65,0.65); font-size: var(--topbar-size); }
-    #feed-countdown{ color: rgba(0,255,65,0.65); font-size: var(--topbar-size); margin-left: 4px; }
+    #feed-status   { color: rgba(var(--fg-rgb),0.65); font-size: var(--topbar-size); }
+    #feed-countdown{ color: rgba(var(--fg-rgb),0.65); font-size: var(--topbar-size); margin-left: 4px; }
 
     /* ── ZULU primary ─── */
     .zulu-block {
@@ -273,17 +307,18 @@
       flex-shrink: 0;
     }
 
+    .moon-panel { cursor: pointer; user-select: none; }
     #moon-svg {
       width: var(--zulu-size);
       height: var(--zulu-size);
       display: block;
-      filter: drop-shadow(0 0 6px rgba(0,255,65,0.3));
+      filter: drop-shadow(0 0 6px rgba(var(--fg-rgb),0.3));
     }
 
     .moon-lbl {
       font-size: var(--tz-city-size);
       letter-spacing: 2px;
-      color: rgba(0,255,65,0.42);
+      color: rgba(var(--fg-rgb),0.42);
       text-align: center;
     }
 
@@ -305,7 +340,7 @@
         0 0 5px  var(--green),
         0 0 12px var(--green),
         0 0 28px var(--green-glow),
-        0 0 55px rgba(0,255,65,0.07);
+        0 0 55px rgba(var(--fg-rgb),0.07);
       display: block;
     }
 
@@ -325,10 +360,10 @@
     }
 
     .tz-card {
-      border: 1px solid rgba(0,255,65,0.17);
+      border: 1px solid rgba(var(--fg-rgb),0.17);
       padding: clamp(5px, 0.6vw, 9px) 6px clamp(4px, 0.5vw, 7px);
       text-align: center;
-      background: rgba(0,255,65,0.018);
+      background: rgba(var(--fg-rgb),0.018);
       position: relative;
       overflow: hidden;
     }
@@ -358,14 +393,14 @@
 
     .tz-meta {
       font-size: var(--tz-meta-size);
-      color: rgba(0,255,65,0.38);
+      color: rgba(var(--fg-rgb),0.38);
       letter-spacing: 1px;
       margin-top: 1px;
     }
 
     .tz-sun {
       font-size: var(--tz-meta-size);
-      color: rgba(0,255,65,0.28);
+      color: rgba(var(--fg-rgb),0.28);
       letter-spacing: 1px;
       margin-top: 2px;
     }
@@ -373,7 +408,7 @@
     /* ── Divider ─── */
     .rule {
       border: none;
-      border-top: 1px solid rgba(0,255,65,0.11);
+      border-top: 1px solid rgba(var(--fg-rgb),0.11);
       flex-shrink: 0;
     }
 
@@ -388,7 +423,7 @@
       gap: 7px;
     }
     .section-head::before { content: '◈ '; }
-    .section-head::after  { content: ''; flex: 1; height: 1px; background: rgba(0,255,65,0.11); }
+    .section-head::after  { content: ''; flex: 1; height: 1px; background: rgba(var(--fg-rgb),0.11); }
 
     /* ── Weather ─── */
     .wx-section { flex-shrink: 0; }
@@ -400,9 +435,9 @@
     }
 
     .wx-card {
-      border: 1px solid rgba(0,255,65,0.17);
+      border: 1px solid rgba(var(--fg-rgb),0.17);
       padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1vw, 14px);
-      background: rgba(0,255,65,0.018);
+      background: rgba(var(--fg-rgb),0.018);
       position: relative;
     }
     .wx-card::after {
@@ -425,11 +460,11 @@
     .wx-unit { font-size: calc(var(--wx-temp-size) * 0.45); color: var(--green-dim); }
     .wx-cond  { font-size: var(--wx-sub-size); color: var(--green-dim); letter-spacing: 1px; margin-top: 1px; }
     .wx-sig   { font-size: var(--wx-sub-size); letter-spacing: 1px; margin-top: 3px; line-height: 1.4; }
-    .wx-sig-heat   { color: var(--green); text-shadow: 0 0 8px rgba(0,255,65,0.5); }
+    .wx-sig-heat   { color: var(--green); text-shadow: 0 0 8px rgba(var(--fg-rgb),0.5); }
     .wx-sig-warn   { color: var(--amber); text-shadow: 0 0 8px var(--amber-dim); }
     .wx-sig-precip { color: var(--cyan); text-shadow: 0 0 8px rgba(0,200,255,0.5); }
-    .wx-sig-sep    { color: rgba(0,255,65,0.3); }
-    .wx-sun   { font-size: var(--wx-sub-size); color: rgba(0,255,65,0.38); letter-spacing: 1px; margin-top: 2px; }
+    .wx-sig-sep    { color: rgba(var(--fg-rgb),0.3); }
+    .wx-sun   { font-size: var(--wx-sub-size); color: rgba(var(--fg-rgb),0.38); letter-spacing: 1px; margin-top: 2px; }
     .wx-pend  { font-size: calc(var(--wx-sub-size) * 1.1); color: var(--green-dim); animation: blink 1s step-end infinite; }
     .wx-err   { font-size: var(--wx-sub-size); color: var(--red); letter-spacing: 1px; }
 
@@ -444,7 +479,7 @@
       cursor: pointer;
     }
     .press-section:hover .section-head { color: var(--green); }
-    .press-section:hover .press-card   { border-color: rgba(0,255,65,0.3); }
+    .press-section:hover .press-card   { border-color: rgba(var(--fg-rgb),0.3); }
     .press-tot { order: 1; letter-spacing: 2px; color: var(--green-dim); }
     .press-grid {
       display: grid;
@@ -457,28 +492,38 @@
     .press-card.overdue { border-color: rgba(255,60,60,0.35); }
     .press-card.today   { border-color: rgba(255,183,0,0.3); }
     .press-card .wx-city { display: flex; justify-content: space-between; gap: 8px; }
-    .press-card .wx-city span:first-child { color: var(--green); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .press-card .wx-city span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .press-card .wx-city span:first-child { color: var(--green); flex-shrink: 0; max-width: 70%; }
+    .press-cdrow > span:last-child { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .press-line { font-size: var(--wx-sub-size); letter-spacing: 1px; color: var(--green-dim); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .press-cdrow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: var(--wx-sub-size); letter-spacing: 1px; color: var(--green-dim); white-space: nowrap; }
     .press-cd { font-size: calc(var(--wx-temp-size) * 0.8); }
     .press-cd.today { color: var(--amber); text-shadow: 0 0 9px rgba(255,183,0,0.35); }
     .press-cd .wx-unit { margin: 0 2px; }
     .press-cd .wx-unit:not(:first-child) { margin-right: 0.35em; }   /* the D before the hours */
+    .press-cd .wx-unit.ms-days { margin: 0 0 0 0.25em; }   /* a mission's DAYS */
     .press-bar { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; font-size: var(--wx-sub-size); color: var(--green); letter-spacing: 1px; }
-    .press-bar > div { flex: 1; height: 8px; border: 1px solid rgba(0,255,65,0.25); position: relative; }
+    .press-bar > div { flex: 1; height: 8px; border: 1px solid rgba(var(--fg-rgb),0.25); position: relative; }
     .press-bar > div > i { position: absolute; inset: 0 auto 0 0; background: var(--green-dim); box-shadow: 0 0 6px var(--green-glow); }
     /* one segment per check: dark gaps drawn over the fill */
     .press-bar > div::after {
       content: ''; position: absolute; inset: 0;
-      background: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--seg, 10) - 2px), #000 0 calc(100% / var(--seg, 10)));
+      background: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--seg, 10) - 2px), var(--bg) 0 calc(100% / var(--seg, 10)));
     }
     .press-od { color: var(--red); }
     .press-td { color: var(--amber); }
     .press-late { color: var(--red); }
     .press-off .section-head { margin-bottom: 0; }
 
+    /* ── Missions (Mission cmd) — cards reuse the press card styles ─── */
+    .missions-section { flex-shrink: 0; }
+    .ms-ticks { display: flex; gap: 10px; margin-top: 3px; font-size: var(--wx-sub-size); letter-spacing: 1px; color: rgba(var(--fg-rgb),0.35); white-space: nowrap; overflow: hidden; }
+    .ms-ticks .done { color: var(--green); }
+    .ms-ticks .need { color: var(--red); }
+
     /* ── News ticker ─── */
     .ticker {
-      border-top: 1px solid rgba(0,255,65,0.11);
+      border-top: 1px solid rgba(var(--fg-rgb),0.11);
       padding-top: 4px;
       overflow: hidden;
       white-space: nowrap;
@@ -496,7 +541,7 @@
       white-space: nowrap;
       font-size: var(--ticker-size);
       letter-spacing: 1.2px;
-      color: rgba(0,255,65,0.55);
+      color: rgba(var(--fg-rgb),0.55);
       will-change: transform;
     }
 
@@ -506,7 +551,7 @@
     #ticker-inner .ntag-ca    { color: var(--cyan);  }
     #ticker-inner .ntag-sys   { color: var(--green-dim); }
     #ticker-inner .ntag-wx    { color: var(--amber); }
-    #ticker-inner .nsep { color: rgba(0,255,65,0.22); }
+    #ticker-inner .nsep { color: rgba(var(--fg-rgb),0.22); }
 
     .news-link { color: inherit; text-decoration: none; }
 
@@ -514,7 +559,7 @@
     .corner {
       position: fixed;
       font-size: clamp(7px, 0.7vw, 9px);
-      color: rgba(0,255,65,0.16);
+      color: rgba(var(--fg-rgb),0.16);
       letter-spacing: 1.5px;
       z-index: 900;
     }
@@ -526,7 +571,7 @@
     /* ── Loading screen ─── */
     #loader {
       position: fixed; inset: 0; z-index: 10000;
-      background: #000;
+      background: var(--bg);
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
     }
@@ -539,7 +584,7 @@
         0 0 5px  var(--green),
         0 0 12px var(--green),
         0 0 28px var(--green-glow),
-        0 0 55px rgba(0,255,65,0.07);
+        0 0 55px rgba(var(--fg-rgb),0.07);
       letter-spacing: var(--zulu-lsp);
       line-height: 1;
       display: block;
@@ -547,7 +592,7 @@
     #loader-msg {
       font-size: 12px;
       letter-spacing: 5px;
-      color: rgba(0,255,65,0.38);
+      color: rgba(var(--fg-rgb),0.38);
       margin-top: clamp(18px, 3vh, 36px);
     }
     #loader-msg .ld { opacity: 0; animation: ldot 1.6s infinite; }
@@ -598,7 +643,7 @@
         <div id="zulu-date">SYNCHRONIZING&hellip;</div>
       </div>
       <div class="zulu-flank">
-        <div class="moon-panel">
+        <div class="moon-panel" id="moon-panel" title="Change mode (M)">
           <svg id="moon-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <filter id="mglow" x="-40%" y="-40%" width="180%" height="180%">
@@ -612,13 +657,13 @@
               </pattern>
             </defs>
             <!-- Dark body -->
-            <circle cx="50" cy="50" r="45" fill="rgba(0,18,6,1)" stroke="rgba(0,255,65,0.18)" stroke-width="1.5"/>
+            <circle cx="50" cy="50" r="45" style="fill:var(--moon-body);stroke:rgba(var(--fg-rgb),0.18)" stroke-width="1.5"/>
             <!-- Lit portion -->
-            <path id="moon-lit" clip-path="url(#moon-clip)" fill="rgba(0,255,65,0.22)" filter="url(#mglow)"/>
+            <path id="moon-lit" clip-path="url(#moon-clip)" style="fill:rgba(var(--fg-rgb),0.22)" filter="url(#mglow)"/>
             <!-- Pixel grid overlay for block aesthetic -->
             <circle cx="50" cy="50" r="45" fill="url(#moon-grid)" clip-path="url(#moon-clip)"/>
             <!-- Outer ring glow -->
-            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,255,65,0.12)" stroke-width="3"/>
+            <circle cx="50" cy="50" r="45" style="fill:none;stroke:rgba(var(--fg-rgb),0.12)" stroke-width="3"/>
           </svg>
           <div id="moon-lbl" class="moon-lbl"></div>
         </div>
@@ -642,6 +687,12 @@
       <div id="press-body"></div>
     </a>
 
+    <!-- Missions: upcoming FS missions from Mission cmd's mmGetMissions, through server.py -->
+    <div class="missions-section" id="missions">
+      <div class="section-head" id="missions-head">MISSIONS</div>
+      <div id="missions-body"></div>
+    </div>
+
     <!-- Live news ticker -->
     <div class="ticker">
       <span id="ticker-inner"></span>
@@ -659,7 +710,7 @@
     let triggered = false;
 
     // .zulu-center excluded — clock stays at full opacity and shines through as loader fades
-    const POWER_ON_SELS = '.topbar, .zulu-flank, .tz-row, .rule, .wx-section, .press-section, .ticker';
+    const POWER_ON_SELS = '.topbar, .zulu-flank, .tz-row, .rule, .wx-section, .press-section, .missions-section, .ticker';
 
     function triggerOut() {
       if (triggered) return;
@@ -783,6 +834,7 @@
   const SA_DWELL_MS     = 3500;             // ms per alert card before cycling
   const PRESS_URL       = 'http://127.0.0.1:8771';  // the Presser app (its default port)
   const PRESS_REFRESH_MS = 60 * 1000;
+  const MISSIONS_REFRESH_MS = 2 * 60 * 1000;
   const TICKER_PX_PER_FRAME = 1.3;
   let   nextNewsRefreshAt = null;
   let   fetchCount       = 0;
@@ -1617,15 +1669,15 @@
     const el = document.getElementById('sa-item');
     if (!alert) {
       el.innerHTML = `
-        <div class="sa-symbol" style="color:rgba(0,255,65,0.18)">◆</div>
-        <div class="sa-cat"    style="color:rgba(0,255,65,0.28)">ALL CLEAR</div>
-        <div class="sa-headline" style="font-size:18px;color:rgba(0,255,65,0.28)">ALL SOURCES<br>NOMINAL</div>
+        <div class="sa-symbol" style="color:rgba(var(--fg-rgb),0.18)">◆</div>
+        <div class="sa-cat"    style="color:rgba(var(--fg-rgb),0.28)">ALL CLEAR</div>
+        <div class="sa-headline" style="font-size:18px;color:rgba(var(--fg-rgb),0.28)">ALL SOURCES<br>NOMINAL</div>
         <div class="sa-detail">7 FEEDS MONITORED</div>`;
       requestAnimationFrame(fitSaPanel);
       return;
     }
     el.innerHTML = `
-      <div class="sa-symbol" style="color:rgba(0,255,65,0.28)">${alert.symbol}</div>
+      <div class="sa-symbol" style="color:rgba(var(--fg-rgb),0.28)">${alert.symbol}</div>
       <div class="sa-cat">${alert.cat}</div>
       <div class="sa-headline">${alert.headline}</div>
       <div class="sa-detail">${alert.detail}</div>`;
@@ -1709,7 +1761,7 @@
     stories.forEach(st => {
       const t = Date.parse(st.countdown_to);
       if (!(t > Date.now())) return;
-      if (!best || t < best.t) best = { t, name: st.short_name };
+      if (!best || t < best.t) best = { t, id: st.id };
     });
     return best;
   }
@@ -1719,6 +1771,15 @@
   function pressWhen(t) {
     const d = new Date(t), p = v => String(v).padStart(2, '0');
     return `${PRESS_DAYS[d.getDay()]} ${d.getDate()} ${PRESS_MONS[d.getMonth()]} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  // Cards share the weather grid's columns: the whole row, extra columns to the first cards;
+  // when they can't all get two columns, two each and they wrap (a whole row each below four columns).
+  function pressSpread(cards) {
+    const cols = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--wx-cols')) || 8;
+    const n = cards.length;
+    cards.forEach((c, i) => c.style.setProperty('--span',
+      n * 2 > cols ? (cols < 4 ? cols : 2) : Math.floor(cols / n) + (i < cols % n ? 1 : 0)));
   }
 
   function pressRender() {
@@ -1748,38 +1809,28 @@
     if (tot.messages) totBits.push(sep(), span('', `${tot.messages} TO CHASE`));
     head.replaceChildren('PRESS — PRESSER APP', el('span', 'press-tot', ...totBits));
 
-    // Card 1: the nearest event still ahead, as a countdown.
+    // One card per story, the one with the nearest event first: its countdown sits in its own card.
+    // Then overdue, then today, then the soonest event, then the rest.
     const nxt = pressNext(live);
-    const cards = [];
-    if (nxt) {
-      const today = new Date(nxt.t).toDateString() === new Date().toDateString();
-      const s = Math.max(0, Math.floor((nxt.t - Date.now()) / 1000)), p = v => String(v).padStart(2, '0');
-      const d = Math.floor(s / 86400);
-      const hms = `${p(Math.floor(s % 86400 / 3600))}:${p(Math.floor(s % 3600 / 60))}:${p(s % 60)}`;
-      const cd = el('div', 'wx-temp press-cd' + (today ? ' today' : ''), span('wx-unit', 'T-'));
-      if (d) cd.append(String(d), span('wx-unit', 'D'));
-      cd.append(hms);
-      cards.push(el('div', 'wx-card press-card' + (today ? ' today' : ''),
-        el('div', 'wx-city', span('', 'NEXT EVENT'), span('', pressWhen(nxt.t))),
-        cd,
-        el('div', 'press-line', nxt.name.toUpperCase())));
-    } else {
-      cards.push(el('div', 'wx-card press-card',
-        el('div', 'wx-city', span('', 'NEXT EVENT')),
-        el('div', 'wx-temp press-cd', span('wx-unit', 'NONE SET'))));
-    }
-
-    // Story cards: overdue first, then today, then the soonest event, then the rest.
-    const rank = st => st.old_builder ? 3 : st.overdue ? 0 : st.today ? 1 : 2;
+    const rank = st => nxt && st.id === nxt.id ? -1 : st.old_builder ? 3 : st.overdue ? 0 : st.today ? 1 : 2;
     const when = st => { const t = Date.parse(st.countdown_to); return t > 0 ? t : Infinity; };
-    const shown = stories.slice().sort((a, b) => rank(a) - rank(b) || when(a) - when(b)).slice(0, 3);
-    shown.forEach(st => {
+    const shown = stories.slice().sort((a, b) => rank(a) - rank(b) || when(a) - when(b)).slice(0, 4);
+    const cards = shown.map(st => {
       const card = el('div', 'wx-card press-card' + (st.overdue ? ' overdue' : st.today ? ' today' : ''),
         el('div', 'wx-city', span('', st.short_name.toUpperCase()), span('', String(st.doc || '').toUpperCase())));
+      if (nxt && st.id === nxt.id) {
+        const today = new Date(nxt.t).toDateString() === new Date().toDateString();
+        const s = Math.max(0, Math.floor((nxt.t - Date.now()) / 1000)), p = v => String(v).padStart(2, '0');
+        const d = Math.floor(s / 86400);
+        const hms = `${p(Math.floor(s % 86400 / 3600))}:${p(Math.floor(s % 3600 / 60))}:${p(s % 60)}`;
+        const cd = el('div', 'wx-temp press-cd' + (today ? ' today' : ''), span('wx-unit', 'T-'));
+        if (d) cd.append(String(d), span('wx-unit', 'D'));
+        cd.append(hms);
+        card.append(el('div', 'press-cdrow', cd, span('', pressWhen(nxt.t))));
+      }
       if (st.old_builder) {
         card.append(el('div', 'press-line', 'OLD BUILDER'));
-        cards.push(card);
-        return;
+        return card;
       }
       const [done, total] = st.progress || [];
       if (total) {
@@ -1799,14 +1850,88 @@
       } else if (send) {
         card.append(el('div', 'press-line', '▸ ' + send.label.toUpperCase() + (Date.parse(send.due) ? ' · ' + pressWhen(Date.parse(send.due)) : '')));
       }
-      cards.push(card);
+      return card;
     });
-    // The countdown takes two weather columns; the stories share the rest of the row.
-    const cols = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--wx-cols')) || 8;
-    const width = Math.min(cols, Math.max(2, Math.floor((cols - 2) / Math.max(1, shown.length))));
-    cards.slice(1).forEach(c => c.style.setProperty('--span', width));
+    pressSpread(cards);
     if (stories.length > shown.length) head.lastChild.append(sep(), span('', `+${stories.length - shown.length} MORE`));
     body.replaceChildren(el('div', 'press-grid', ...cards));
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  MISSIONS — upcoming FS missions, from Mission cmd's mmGetMissions via server.py /missions.
+  //  First names, dates and types only: facilities stay off the clock. Read only, keeps nothing.
+  // ─────────────────────────────────────────────────────────────
+  let missionsData = null;     // last good mmGetMissions answer
+  let missionsNote = '';       // why there is none, for the head
+
+  function missionsRender() {
+    const head = document.getElementById('missions-head');
+    const body = document.getElementById('missions-body');
+    if (!head || !body) return;
+    if (!missionsData) {
+      head.textContent = 'MISSIONS: ' + missionsNote;
+      body.replaceChildren();
+      return;
+    }
+    const el = (tag, cls, ...kids) => { const e = document.createElement(tag); if (cls) e.className = cls; e.append(...kids); return e; };
+    const span = (cls, text) => el('span', cls, text);
+    const sep = () => span('wx-sig-sep', ' · ');
+    const now = Date.now();
+    const up = missionsData.missions.filter(m => !m.cancelled && m.days_out >= 0)
+      .sort((a, b) => a.days_out - b.days_out);
+    const planLate = m => !m.approved && !m.planReceived && Date.parse(m.planDue) < now;
+
+    // Head: this week, plans late, and missions near with no approved plan.
+    const gates = up.filter(m => m.gate_warning).length;
+    const late  = up.filter(planLate).length;
+    const tot = [span('', `${up.filter(m => m.days_out <= 7).length} THIS WEEK`)];
+    if (late)  tot.push(sep(), span('press-td', `${late} PLAN${late > 1 ? 'S' : ''} LATE`));
+    if (gates) tot.push(sep(), span('press-od', `${gates} NO PLAN, ≤2 DAYS`));
+    head.replaceChildren('MISSIONS — MISSION CMD', el('span', 'press-tot', ...tot));
+
+    const cards = up.slice(0, 4).map(m => {
+      const near = m.days_out <= 2;
+      const card = el('div', 'wx-card press-card' + (m.gate_warning ? ' overdue' : near || planLate(m) ? ' today' : ''),
+        el('div', 'wx-city', span('', m.label.toUpperCase()),
+          span('', m.types.map(t => t.replace(/_/g, ' ')).join(' + ').toUpperCase() || 'NO TYPE')));
+      const cd = el('div', 'wx-temp press-cd' + (near ? ' today' : ''));
+      if (m.days_out === 0) cd.append('TODAY');
+      else cd.append(span('wx-unit', 'T-'), String(m.days_out), span('wx-unit ms-days', m.days_out === 1 ? 'DAY' : 'DAYS'));
+      card.append(el('div', 'press-cdrow', cd, span('', m.members.map(n => n.split(' ')[0]).join(' + ').toUpperCase())));
+      const tick = (on, word) => span(on ? 'done' : '', (on ? '■ ' : '□ ') + word);
+      card.append(el('div', 'ms-ticks',
+        tick(m.confirmed, 'CONFIRMED'), tick(m.briefingSent, 'BRIEFING'),
+        m.approved || !m.gate_warning ? tick(m.approved, 'PLAN OK') : span('need', '□ PLAN OK')));
+      let plan;
+      if (m.approved)          plan = el('div', 'press-line', 'PLAN APPROVED');
+      else if (m.planReceived) plan = el('div', 'press-line', 'PLAN IN' + (Date.parse(m.planReceived.review_by) ? ' · REVIEW BY ' + pressWhen(Date.parse(m.planReceived.review_by)) : ''));
+      else if (Date.parse(m.planDue)) plan = el('div', 'press-line' + (planLate(m) ? ' press-td' : ''), (planLate(m) ? 'PLAN LATE · WAS DUE ' : 'PLAN DUE ') + pressWhen(Date.parse(m.planDue)));
+      if (plan) card.append(plan);
+      return card;
+    });
+    pressSpread(cards);
+    if (up.length > cards.length) head.lastChild.append(sep(), span('', `+${up.length - cards.length} MORE`));
+    body.replaceChildren(el('div', 'press-grid', ...cards));
+  }
+
+  async function loadMissions() {
+    const ctl = new AbortController();
+    const to  = setTimeout(() => ctl.abort(), 20000);
+    try {
+      if (!location.protocol.startsWith('http')) throw new Error('opened as a file');
+      const r = await fetch('/missions', { signal: ctl.signal, cache: 'no-store' });
+      if (r.status === 503) throw new Error('Mission cmd not connected');
+      if (!r.ok) throw new Error('Mission cmd did not answer');
+      const d = await r.json();
+      if (!Array.isArray(d.missions)) throw new Error('Mission cmd did not answer');
+      missionsData = d;
+    } catch (e) {
+      missionsData = null;
+      missionsNote = e.name === 'AbortError' ? 'Mission cmd did not answer' : e.message;
+    } finally {
+      clearTimeout(to);
+    }
+    try { missionsRender(); } catch { missionsData = null; missionsNote = 'could not read the answer'; missionsRender(); }
   }
 
   async function loadPress() {
@@ -1825,6 +1950,24 @@
     }
     try { pressRender(); } catch { pressData = null; pressRender(); }
   }
+
+  // ─────────────────────────────────────────────────────────────
+  //  MODES — green, pink, blue. Click the moon or press M for the next one.
+  // ─────────────────────────────────────────────────────────────
+  const MODES = ['green', 'pink', 'blue'];
+  function nextMode() {
+    const now  = document.documentElement.dataset.mode || 'green';
+    const mode = MODES[(MODES.indexOf(now) + 1) % MODES.length];
+    if (mode === 'green') delete document.documentElement.dataset.mode;
+    else document.documentElement.dataset.mode = mode;
+    try { localStorage.setItem('zulu-mode', mode); } catch {}
+  }
+  document.getElementById('moon-panel').addEventListener('click', nextMode);
+  document.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() !== 'm' || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return;
+    nextMode();
+  });
 
   // ─────────────────────────────────────────────────────────────
   //  START
@@ -1859,6 +2002,7 @@
   fitSaPanel();
   new ResizeObserver(fitSaPanel).observe(document.querySelector('.zulu-center'));
   window.addEventListener('resize', fitSaPanel);
+  window.addEventListener('resize', () => { if (missionsData) missionsRender(); });   // press redraws every second anyway
 
   // launchWithRetry: fires fn immediately (after initialDelayMs), then backs off
   // through RETRY_MS if still degraded, finally handing off to setInterval at normalMs.
@@ -1881,6 +2025,7 @@
   launchWithRetry(loadHeadlines,  () => intelFeedDegraded,   NEWS_REFRESH_MS,  800);
   launchWithRetry(loadSitAware,   () => saDegraded,          SA_REFRESH_MS,    1200);
   launchWithRetry(loadPress,      () => false,               PRESS_REFRESH_MS, 1500);
+  launchWithRetry(loadMissions,   () => false,               MISSIONS_REFRESH_MS, 1700);
 
   </script>
 </body>
