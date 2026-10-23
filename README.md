@@ -16,7 +16,7 @@ A full-screen tactical time display for macOS. Built as a single self-contained 
 
 Weather refreshes every 20 minutes. Headlines refresh every 5 minutes.
 
-The Press section reads the Presser app's `/api/summary` every minute and stores nothing. It shows "PRESS: app not running" when the app does not answer. The address is the `PRESS_URL` constant at the top of the script; the app allows the clock only from `http://localhost:8766` (what `launch.sh` opens), not from a file.
+The Press section reads the Presser app's `/api/summary` every minute and stores nothing. It shows "PRESS: app not running" when the app does not answer. The address is the `PRESS_URL` constant at the top of the script; the app allows the clock only from `http://localhost:8769` (what `launch.sh` opens), not from a file.
 
 ## Situational Awareness (SA) data sources
 
@@ -48,7 +48,7 @@ Keywords monitored in WHO feed: outbreak, disease, virus, epidemic, influenza, f
 ./launch.sh
 ```
 
-Opens the clock at `http://localhost:8766/zulu-clock.html` using Python's built-in HTTP server. Works in Safari, Chrome, Firefox, or any modern browser. Press `Ctrl+C` in the terminal to stop. If port 8766 is already taken, `launch.sh` stops the holder only when it is an earlier Zulu Clock server; otherwise it says so and exits without stopping anything.
+Opens the clock at `http://localhost:8769/zulu-clock.html` using Python's built-in HTTP server. Works in Safari, Chrome, Firefox, or any modern browser. Press `Ctrl+C` in the terminal to stop. If port 8769 is already taken, `launch.sh` stops the holder only when it is an earlier Zulu Clock server; otherwise it says so and exits without stopping anything.
 
 ### Option B — Open directly in browser
 
