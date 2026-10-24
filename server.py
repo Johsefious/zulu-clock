@@ -6,10 +6,11 @@ the server makes the real call to that source's fixed address (browsers can't re
 WHO or NWS directly anyway). Each call's outcome is kept, so /status can say, per source, how its
 latest calls went. The clock prints only what /status says.
 
-It also hands the clock Mission cmd's missions at /missions, read through Mission cmd's own
+It also hands the clock cmd fs's missions at /missions, read through cmd fs's own
 mmGetMissions endpoint, never from the sheet. MISSIONS_CALL names a router that takes
-POST <MISSIONS_CALL>/call/<endpoint> (Mission cmd's preview, tools/preview.js, speaks it).
-Without it, /missions answers 503 and the clock says Mission cmd is not connected.
+POST <MISSIONS_CALL>/call/<endpoint>: by default cmd fs's router on its home port 8767
+(fs-coordination tools/router.js); its read-only preview, tools/preview.js, speaks it too.
+When nothing listens there, /status says cmd fs is offline.
 
 Usage: python3 server.py PORT DIRECTORY
 """
@@ -44,11 +45,12 @@ SOURCES = {
     'swpc':       ('NOAA SWPC', 'geomagnetic storms', 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json'),
     'presser':    ('Presser', 'press', 'http://127.0.0.1:8771/api/summary'),
 }
-MISSIONS_CALL = os.environ.get('MISSIONS_CALL', '').rstrip('/')
+MISSIONS_CALL = (os.environ.get('MISSIONS_CALL') or 'http://127.0.0.1:8767').rstrip('/')
 STATUS_ORDER = list(SOURCES) + ['mission-cmd']
 CACHE_SECONDS = 120   # several open clocks share one call
 TIMEOUT = 10
 FORGET_SECONDS = 24 * 3600   # a call not made again in a day no longer counts
+OFFLINE = 'Connection refused'   # plain_error's words when nothing listens at the address
 _cache = {}           # url -> (fetched_at, content_type, body)
 _calls = {}           # source -> {url: (at, ok, error)}, the latest outcome of each distinct call
 _lock = threading.Lock()
@@ -102,17 +104,17 @@ def status():
     with _lock:
         calls = {n: {u: c for u, c in byurl.items() if c[0] >= cutoff} for n, byurl in _calls.items()}
     for name in STATUS_ORDER:
-        label, feeds = ('Mission cmd', 'missions') if name == 'mission-cmd' else SOURCES[name][:2]
+        label, feeds = ('cmd fs', 'missions') if name == 'mission-cmd' else SOURCES[name][:2]
         latest = list(calls.get(name, {}).values())
         ok = [c for c in latest if c[1]]
         bad = sorted((c for c in latest if not c[1]), key=lambda c: c[0])
-        if name == 'mission-cmd' and not MISSIONS_CALL:
-            state, error = 'not connected', 'no way in from outside yet (MISSIONS_CALL unset)'
-        elif not latest:
+        if not latest:
             state, error = 'not called', ''
         else:
             state = 'answering' if not bad else 'failing' if not ok else 'partial'
             error = bad[-1][2] if bad else ''
+            if state == 'failing' and error == OFFLINE:
+                state = 'offline'   # nothing listens at its address
         out.append({
             'name': name, 'label': label, 'feeds': feeds, 'state': state, 'error': error,
             'calls': len(latest), 'answered': len(ok),
@@ -141,12 +143,19 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_body(ctype, body)
 
     def send_missions(self):
-        if not MISSIONS_CALL:
-            return self.send_error(503, 'Mission cmd not connected')
+        url = MISSIONS_CALL + '/call/mmGetMissions'
         try:
-            _, body = call('mission-cmd', MISSIONS_CALL + '/call/mmGetMissions', data=b'null')
+            _, body = call('mission-cmd', url, data=b'null')
         except Exception as e:
-            return self.send_error(502, f'Mission cmd did not answer: {plain_error(e)}')
+            return self.send_error(502, f'cmd fs did not answer: {plain_error(e)}')
+        try:
+            answer = json.loads(body)
+        except ValueError:
+            answer = {'refused': 'bad_answer', 'reason': 'not JSON'}
+        # The router sends a refusal (signed_out, google, ...) with HTTP 200; it is not an answer.
+        if isinstance(answer, dict) and answer.get('refused'):
+            record('mission-cmd', url, False, f"refused {answer['refused']}: {answer.get('reason', '')}")
+            return self.send_error(502, f"cmd fs refused: {answer['refused']}")
         self.send_body('application/json', body)
 
     def send_body(self, ctype, body):

@@ -16,7 +16,7 @@ Sessions working on the clock: the latest handoff is `handoff/HANDOFF.md` (git-i
 | **California weather** | Berkeley · Fresno · Tulare · Los Angeles — temp, feels-like, condition | [Open-Meteo](https://open-meteo.com) (free, no key) |
 | **News ticker** | Live World / US / CA headlines | Google News RSS, fetched by `server.py` |
 | **Press** | A card per story: checks done, overdue and due today, and the next step. The story with the nearest event comes first, with its countdown. Click to open the Presser app | Presser app's `/api/summary` at `http://127.0.0.1:8771` (local), through `server.py` |
-| **Missions** | The next four FS missions: days to go, first names, type, facilities, confirmed / briefing / plan ticks, and when the plan is due or late. Red when a mission is two days out with no approved plan | Mission cmd's `mmGetMissions`, through `server.py` |
+| **Missions** | The next four FS missions: days to go, first names, type, facilities, confirmed / briefing / plan ticks, and when the plan is due or late. Red when a mission is two days out with no approved plan | cmd fs's `mmGetMissions`, through `server.py` |
 | **SA panel** | Rotating situational awareness alerts (see below) | Multiple (see below) |
 
 Weather refreshes every 20 minutes. Headlines refresh every 5 minutes.
@@ -32,16 +32,16 @@ Every status word on the clock comes from a real call. The page never calls an o
 | `answering` | Every distinct call's latest try got a reply in time (it does not check what the reply said) |
 | `partial` | Some did, some didn't; `error` is the latest failure |
 | `failing` | None did |
-| `not connected` | Mission cmd only: no way in yet |
+| `offline` | Nothing listens at the source's address (connection refused), for example cmd fs's router or Presser not running |
 | `not called` | The clock hasn't asked for it since `server.py` started |
 
 The top bar is one line: on the left, the sources answering and the first two that aren't (amber, with the dot); on the right, the headline count and the next news refresh. The weather head, the SA all-clear card, and the Press and Missions heads each print their own sources' states; the ticker's `[SYS]` items list every source that isn't answering (all of them when there are no headlines). The sources are the `SOURCES` table in `server.py`.
 
 ## Missions
 
-The clock reads missions only through Mission cmd's own `mmGetMissions` endpoint (fs-coordination), never from the sheet. `server.py` passes it on at `/missions` every 2 minutes and keeps nothing. It shows first names, dates, mission types and facilities.
+The clock reads missions only through cmd fs's own `mmGetMissions` endpoint (fs-coordination), never from the sheet. `server.py` passes it on at `/missions` every 2 minutes and keeps nothing. It shows first names, dates, mission types and facilities.
 
-`server.py` calls `POST <MISSIONS_CALL>/call/mmGetMissions`, where `MISSIONS_CALL` is an environment variable. Mission cmd has no way in from outside the page yet (its Task 6), so for now the section says "Mission cmd not connected". Mission cmd's read-only preview (`node tools/preview.js <snapshot> 8790` in fs-coordination) speaks the same calls, so `MISSIONS_CALL=http://127.0.0.1:8790 ./launch.sh` shows a snapshot's missions.
+`server.py` calls `POST <MISSIONS_CALL>/call/mmGetMissions`. `MISSIONS_CALL` defaults to cmd fs's router on its home port, `http://127.0.0.1:8767` (fs-coordination `tools/router.js`, which runs the live script with Joe's sign-in). When the router isn't running, the clock says "CMD FS OFFLINE"; when it refuses (for example a dead sign-in, `signed_out`), it says "CMD FS FAILING" with the refusal. cmd fs's read-only preview (`node tools/preview.js <snapshot> <port>` in fs-coordination) speaks the same calls, so `MISSIONS_CALL=http://127.0.0.1:<port> ./launch.sh` shows a snapshot's missions.
 
 ## Modes
 
