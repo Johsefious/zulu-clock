@@ -2,3 +2,4 @@ handoff/
 test-runs.jsonl
 .venv/
 __pycache__/
+.DS_Store
