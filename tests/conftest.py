@@ -5,7 +5,7 @@ import time as _time
 # ── the run record ─────────────────────────────────────────────────────────────────────────
 # Each run appends one line to `test-runs.jsonl` (untracked), in the repo's main folder so that
 # every worktree writes to the same file: when, which commit, a short hash of the uncommitted
-# code, how it was started, whether it was the whole suite, and every test that failed with the
+# code (new untracked files included), how it was started, whether it was the whole suite, and every test that failed with the
 # first line of why. A test file that will not load counts as a failure. `tools/failure_history.py`
 # reads it back. Model: djitel's tests/conftest.py.
 _HERE = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
@@ -68,6 +68,14 @@ def _record_the_run(session, exitstatus):
         full = (all(a in whole for a in given) and not cfg.getoption('keyword')
                 and not cfg.getoption('markexpr') and not cfg.getoption('lf', False))
         diff = _subprocess.run(['git', '-C', _HERE, 'diff', 'HEAD'], capture_output=True, timeout=10).stdout
+        new = _git('ls-files', '--others', '--exclude-standard').splitlines()     # git diff leaves these out
+        for name in new:
+            diff += b'\0' + name.encode() + b'\0'
+            try:
+                with open(_os.path.join(_HERE, name), 'rb') as f:
+                    diff += f.read()
+            except OSError:
+                pass     # a file that cannot be read counts by its name only
         failed = sorted(_RUN_SEEN['failed'])
         row = {'when': _time.strftime('%Y-%m-%dT%H:%M:%S%z'), 'commit': _git('rev-parse', '--short', 'HEAD'),
                'dirty': bool(diff), 'diff': _hashlib.sha1(diff).hexdigest()[:10] if diff else '',

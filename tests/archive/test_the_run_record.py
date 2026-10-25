@@ -27,6 +27,7 @@ def repo(tmp_path):
     (root / 'tests').mkdir(parents=True)
     (root / 'tools').mkdir()
     shutil.copy(HERE / 'pytest.ini', root / 'pytest.ini')
+    shutil.copy(HERE / '.gitignore', root / '.gitignore')
     shutil.copy(HERE / 'tests' / 'conftest.py', root / 'tests' / 'conftest.py')
     if (HERE / 'tools' / 'failure_history.py').exists():
         shutil.copy(HERE / 'tools' / 'failure_history.py', root / 'tools' / 'failure_history.py')
@@ -74,6 +75,26 @@ def test_uncommitted_code_gets_a_diff_hash_that_tells_runs_apart(repo):
     a, b, c = (r['diff'] for r in lines(repo))
     assert re.fullmatch(r'[0-9a-f]{8,}', a)
     assert a == b != c
+
+
+def test_a_new_untracked_file_changes_the_diff_hash(repo):
+    run(repo, 'tests/test_sample.py')
+    (repo / 'tests' / 'test_new.py').write_text('def test_new():\n    pass\n')
+    run(repo, 'tests/test_sample.py')
+    run(repo, 'tests/test_sample.py')
+    (repo / 'tests' / 'test_new.py').write_text('def test_new():\n    assert 1\n')
+    run(repo, 'tests/test_sample.py')
+    clean, a, b, c = (r['diff'] for r in lines(repo))
+    assert clean == ''
+    assert re.fullmatch(r'[0-9a-f]{8,}', a)
+    assert a == b != c
+
+
+def test_an_unreadable_new_file_still_gets_the_line_written(repo):
+    (repo / 'dangling').symlink_to(repo / 'nowhere')
+    run(repo, 'tests/test_sample.py')
+    [row] = lines(repo)
+    assert re.fullmatch(r'[0-9a-f]{8,}', row['diff'])
 
 
 def test_only_a_plain_run_counts_as_the_whole_suite(repo):
