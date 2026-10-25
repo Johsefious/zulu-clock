@@ -121,5 +121,25 @@ zulu-clock/
 ├── zulu-clock.html   ← the entire app (single file)
 ├── server.py         ← local server: serves the page, makes every outside call, answers /status
 ├── launch.sh         ← macOS launcher (starts server.py + opens browser)
-└── launch-pink.sh    ← the same, opening in pink mode
+├── launch-pink.sh    ← the same, opening in pink mode
+├── pytest.ini
+├── tests/
+│   ├── conftest.py   ← writes one line per pytest run to test-runs.jsonl (main folder, untracked)
+│   └── archive/      ← builders' tests; pytest skips them unless named
+└── tools/
+    └── failure_history.py  ← which tests have failed, first and last time; --full for whole-suite runs only
 ```
+
+## Tests
+
+Set up once, then run:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install pytest
+```
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+A builder's test goes in `tests/archive/`, not the suite; reviving one moves it to `tests/` in its own commit.
