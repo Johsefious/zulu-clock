@@ -9,7 +9,7 @@ latest calls went. The clock prints only what /status says.
 It also hands the clock cmd fs's missions at /missions, read through cmd fs's own
 mmGetMissions endpoint, never from the sheet. MISSIONS_CALL names a router that takes
 POST <MISSIONS_CALL>/call/<endpoint>: by default cmd fs's router on its home port 8767
-(fs-coordination tools/router.js); its read-only preview, tools/preview.js, speaks it too.
+(cmd-fs tools/router.js); its read-only preview, tools/preview.js, speaks it too.
 When nothing listens there, /status says cmd fs is offline.
 
 Usage: python3 server.py PORT DIRECTORY

@@ -39,9 +39,9 @@ The top bar is one line: on the left, the sources answering and the first two th
 
 ## Missions
 
-The clock reads missions only through cmd fs's own `mmGetMissions` endpoint (fs-coordination), never from the sheet. `server.py` passes it on at `/missions` every 2 minutes and keeps nothing. It shows first names, dates, mission types and facilities.
+The clock reads missions only through cmd fs's own `mmGetMissions` endpoint (cmd-fs), never from the sheet. `server.py` passes it on at `/missions` every 2 minutes and keeps nothing. It shows first names, dates, mission types and facilities.
 
-`server.py` calls `POST <MISSIONS_CALL>/call/mmGetMissions`. `MISSIONS_CALL` defaults to cmd fs's router on its home port, `http://127.0.0.1:8767` (fs-coordination `tools/router.js`, which runs the live script with Joe's sign-in). When the router isn't running, the clock says "CMD FS OFFLINE"; when it refuses (for example a dead sign-in, `signed_out`), it says "CMD FS FAILING" with the refusal. cmd fs's read-only preview (`node tools/preview.js <snapshot> <port>` in fs-coordination) speaks the same calls, so `MISSIONS_CALL=http://127.0.0.1:<port> ./launch.sh` shows a snapshot's missions.
+`server.py` calls `POST <MISSIONS_CALL>/call/mmGetMissions`. `MISSIONS_CALL` defaults to cmd fs's router on its home port, `http://127.0.0.1:8767` (cmd-fs `tools/router.js`, which runs the live script with Joe's sign-in). When the router isn't running, the clock says "CMD FS OFFLINE"; when it refuses (for example a dead sign-in, `signed_out`), it says "CMD FS FAILING" with the refusal. cmd fs's read-only preview (`node tools/preview.js <snapshot> <port>` in cmd-fs) speaks the same calls, so `MISSIONS_CALL=http://127.0.0.1:<port> ./launch.sh` shows a snapshot's missions.
 
 ## Modes
 
