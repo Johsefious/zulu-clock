@@ -15,10 +15,18 @@ import pytest
 
 HERE = Path(__file__).resolve().parents[2]
 CLEAN_ENV = {k: v for k, v in os.environ.items() if not k.startswith(('GIT_', 'PYTEST_'))}
+CLEAN_ENV.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1')     # no hooks or signing from this Mac
+HASH = r'[0-9a-f]{10}'
 
 
 def sh(*args, cwd):
     return subprocess.run(args, cwd=cwd, capture_output=True, text=True, env=CLEAN_ENV, timeout=60)
+
+
+def git(*args, cwd):
+    r = sh('git', '-c', 'user.name=t', '-c', 'user.email=t@t', *args, cwd=cwd)
+    assert r.returncode == 0, f'git {" ".join(args)} failed: {r.stderr}'
+    return r.stdout.strip()
 
 
 @pytest.fixture
@@ -29,20 +37,19 @@ def repo(tmp_path):
     shutil.copy(HERE / 'pytest.ini', root / 'pytest.ini')
     shutil.copy(HERE / '.gitignore', root / '.gitignore')
     shutil.copy(HERE / 'tests' / 'conftest.py', root / 'tests' / 'conftest.py')
-    if (HERE / 'tools' / 'failure_history.py').exists():
-        shutil.copy(HERE / 'tools' / 'failure_history.py', root / 'tools' / 'failure_history.py')
+    shutil.copy(HERE / 'tools' / 'failure_history.py', root / 'tools' / 'failure_history.py')
     (root / 'tests' / 'test_sample.py').write_text(
         'def test_passes():\n    assert True\n\n'
         'def test_fails():\n    assert 1 == 2, "one is not two"\n')
     (root / 'notes.txt').write_text('first\n')
-    sh('git', 'init', '-q', '-b', 'main', cwd=root)
-    sh('git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'add', '.', cwd=root)
-    sh('git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'start', cwd=root)
+    git('init', '-q', '-b', 'main', cwd=root)
+    git('add', '.', cwd=root)
+    git('commit', '-qm', 'start', cwd=root)
     return root
 
 
-def run(where, *args):
-    return sh(sys.executable, '-m', 'pytest', '-q', '-p', 'no:cacheprovider', *args, cwd=where)
+def run(where, *args, cache=False):
+    return sh(sys.executable, '-m', 'pytest', '-q', *([] if cache else ['-p', 'no:cacheprovider']), *args, cwd=where)
 
 
 def lines(root):
@@ -53,9 +60,9 @@ def lines(root):
 def test_a_run_writes_one_line_with_every_field(repo):
     run(repo, 'tests/test_sample.py')
     [row] = lines(repo)
-    head = sh('git', 'rev-parse', '--short', 'HEAD', cwd=repo).stdout.strip()
-    assert row['commit'] == head
+    assert row['commit'] == git('rev-parse', '--short', 'HEAD', cwd=repo)
     assert re.match(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d{4}$', row['when'])
+    assert row['dirty'] is False
     assert row['diff'] == ''
     assert row['args'] == ['-q', '-p', 'no:cacheprovider', 'tests/test_sample.py']
     assert row['full'] is False
@@ -72,8 +79,10 @@ def test_uncommitted_code_gets_a_diff_hash_that_tells_runs_apart(repo):
     run(repo, 'tests/test_sample.py')
     (repo / 'notes.txt').write_text('third\n')
     run(repo, 'tests/test_sample.py')
-    a, b, c = (r['diff'] for r in lines(repo))
-    assert re.fullmatch(r'[0-9a-f]{8,}', a)
+    rows = lines(repo)
+    a, b, c = (r['diff'] for r in rows)
+    assert all(r['dirty'] is True for r in rows)
+    assert re.fullmatch(HASH, a)
     assert a == b != c
 
 
@@ -84,9 +93,11 @@ def test_a_new_untracked_file_changes_the_diff_hash(repo):
     run(repo, 'tests/test_sample.py')
     (repo / 'tests' / 'test_new.py').write_text('def test_new():\n    assert 1\n')
     run(repo, 'tests/test_sample.py')
-    clean, a, b, c = (r['diff'] for r in lines(repo))
+    rows = lines(repo)
+    clean, a, b, c = (r['diff'] for r in rows)
+    assert [r['dirty'] for r in rows] == [False, True, True, True]
     assert clean == ''
-    assert re.fullmatch(r'[0-9a-f]{8,}', a)
+    assert re.fullmatch(HASH, a)
     assert a == b != c
 
 
@@ -94,7 +105,17 @@ def test_an_unreadable_new_file_still_gets_the_line_written(repo):
     (repo / 'dangling').symlink_to(repo / 'nowhere')
     run(repo, 'tests/test_sample.py')
     [row] = lines(repo)
-    assert re.fullmatch(r'[0-9a-f]{8,}', row['diff'])
+    assert row['dirty'] is True
+    assert re.fullmatch(HASH, row['diff'])
+
+
+def test_finder_files_do_not_count_as_uncommitted_code(repo):
+    (repo / '.DS_Store').write_bytes(b'\0Bud1')
+    (repo / 'tests' / '.DS_Store').write_bytes(b'\0Bud1')
+    run(repo, 'tests/test_sample.py')
+    [row] = lines(repo)
+    assert row['dirty'] is False
+    assert row['diff'] == ''
 
 
 def test_only_a_plain_run_counts_as_the_whole_suite(repo):
@@ -102,7 +123,9 @@ def test_only_a_plain_run_counts_as_the_whole_suite(repo):
     run(repo, 'tests')
     run(repo, '-k', 'passes')
     run(repo, 'tests/test_sample.py')
-    assert [r['full'] for r in lines(repo)] == [True, True, False, False]
+    run(repo, '-m', 'slow')
+    run(repo, '--lf', cache=True)
+    assert [r['full'] for r in lines(repo)] == [True, True, False, False, False, False]
 
 
 def test_a_file_that_will_not_load_is_a_failure_and_still_written(repo):
@@ -119,10 +142,13 @@ def test_a_file_that_will_not_load_is_a_failure_and_still_written(repo):
 
 def test_a_worktree_writes_to_the_main_folder(repo, tmp_path):
     tree = tmp_path / 'tree'
-    sh('git', 'worktree', 'add', '-q', str(tree), '-b', 'side', cwd=repo)
+    git('worktree', 'add', '-q', str(tree), '-b', 'side', cwd=repo)
+    (tree / 'notes.txt').write_text('side\n')
+    git('commit', '-qam', 'side', cwd=tree)
     run(tree, 'tests/test_sample.py')
     assert not (tree / 'test-runs.jsonl').exists()
-    assert len(lines(repo)) == 1
+    [row] = lines(repo)
+    assert row['commit'] == git('rev-parse', '--short', 'HEAD', cwd=tree)
 
 
 def test_a_line_that_cannot_be_written_does_not_stop_the_run(repo):
@@ -131,6 +157,8 @@ def test_a_line_that_cannot_be_written_does_not_stop_the_run(repo):
     assert result.returncode == 1
     assert '1 failed, 1 passed' in result.stdout
     assert 'Traceback' not in result.stdout + result.stderr
+    [warning] = [ln for ln in result.stderr.splitlines() if 'run record not written' in ln]
+    assert 'Is a directory' in warning     # it got as far as opening the file
 
 
 def test_the_history_tool_lists_failed_tests_first_and_last(repo):
@@ -142,12 +170,18 @@ def test_the_history_tool_lists_failed_tests_first_and_last(repo):
     ]
     (repo / 'test-runs.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
     tool = [sys.executable, str(repo / 'tools' / 'failure_history.py')]
-    every = sh(*tool, cwd=repo).stdout
-    t1 = next(ln for ln in every.splitlines() if 'tests/a.py::t1' in ln)
+
+    def history(*args):
+        r = sh(*tool, *args, cwd=repo)
+        assert r.returncode == 0, r.stderr
+        return r.stdout.splitlines()
+
+    head, t1, b = history()
+    assert head == '4 runs recorded, 2026-10-01 10:00 to 2026-10-04 10:00; 3 had a failure'
+    assert 'tests/a.py::t1' in t1     # most failures first
     assert '3 runs' in t1 and 'first 2026-10-01 10:00' in t1 and 'last 2026-10-03 10:00' in t1
     assert 'boom three' in t1
-    assert 'tests/b.py' in every
-    full = sh(*tool, '--full', cwd=repo).stdout
-    t1 = next(ln for ln in full.splitlines() if 'tests/a.py::t1' in ln)
-    assert '2 runs' in t1
-    assert 'tests/b.py' not in full
+    assert 'tests/b.py' in b and '(ImportError: x)' in b
+    head, t1 = history('--full')
+    assert head.startswith('3 runs recorded')
+    assert 'tests/a.py::t1' in t1 and '2 runs' in t1
