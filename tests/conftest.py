@@ -1,5 +1,6 @@
 import os as _os
 import subprocess as _subprocess
+import sys as _sys
 import time as _time
 
 # ── the run record ─────────────────────────────────────────────────────────────────────────
@@ -85,5 +86,5 @@ def _record_the_run(session, exitstatus):
                'why': {n: _RUN_SEEN['why'][n] for n in failed}}
         with open(_os.path.join(_main_folder(), 'test-runs.jsonl'), 'a', encoding='utf-8') as f:
             f.write(_json.dumps(row) + '\n')
-    except Exception:
-        pass     # a record that cannot be written must never fail a run
+    except Exception as e:     # a record that cannot be written must never fail a run, but says so
+        print(f'run record not written to test-runs.jsonl: {type(e).__name__}: {e}', file=_sys.stderr)
