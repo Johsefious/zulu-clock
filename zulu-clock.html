@@ -1771,6 +1771,14 @@
       n * 2 > cols ? (cols < 4 ? cols : 2) : Math.floor(cols / n) + (i < cols % n ? 1 : 0)));
   }
 
+  // The stories that get a card: not archived, and not finished (every step done).
+  function pressVisible(stories) {
+    return stories.filter(st => {
+      const [done, total] = st.progress || [];
+      return !st.archived && !(total > 0 && done >= total);
+    });
+  }
+
   function pressRender() {
     const sec  = document.getElementById('press');
     const head = document.getElementById('press-head');
@@ -1785,7 +1793,7 @@
       return;
     }
     sec.classList.remove('press-off');
-    const stories = pressData.stories.filter(st => !st.archived);
+    const stories = pressVisible(pressData.stories);
     const live = stories.filter(st => !st.old_builder);
     const el = (tag, cls, ...kids) => { const e = document.createElement(tag); if (cls) e.className = cls; e.append(...kids); return e; };
     const span = (cls, text) => el('span', cls, text);
