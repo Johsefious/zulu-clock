@@ -18,7 +18,9 @@ def run(tmp_path, osascript_body, how='KEEP'):
     bin_dir.mkdir()
     log = tmp_path / 'calls.log'
     # the fake logs "osascript <args>" and then does what the test says
-    (bin_dir / 'osascript').write_text('#!/bin/bash\necho "osascript $*" >> "%s"\n%s\n' % (log, osascript_body))
+    # (the AppleScript text is several lines; the log keeps each call on one line)
+    (bin_dir / 'osascript').write_text(
+        '#!/bin/bash\nargs="$*"\necho "osascript ${args//$\'\\n\'/ }" >> "%s"\n%s\n' % (log, osascript_body))
     (bin_dir / 'open').write_text('#!/bin/bash\necho "open $*" >> "%s"\n' % log)
     for f in bin_dir.iterdir():
         f.chmod(0o755)
