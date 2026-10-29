@@ -50,3 +50,43 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **Why:** a web page on another name could read missions (people, facilities, plans) through the server, and a bad feed item could do the same from inside the page.
 - **By:** Joe
 - **Status:** active
+
+## The page's script lives in its own file
+- **Date:** 2026-10-29
+- **Decided:** the script moved from `zulu-clock.html` to `zulu-clock.js`; `server.py` serves the page and the script and nothing else, both with `Cache-Control: no-cache`. Only the small colour-mode script stays inline in `<head>`, so the page never flashes the wrong colour. Archived tests read functions from the script through one helper, `tests/archive/page_js.py`.
+- **Against:** one 2,100-line HTML file; splitting the script into modules (more files for a page with no build step).
+- **Why:** the page and its logic can be read and changed apart, and tests stop carrying six copies of the same extraction.
+- **By:** Claude, from the 2026-10-29 code review; Joe asked for the review's work to be finished
+- **Status:** active
+
+## A failed SA source counts as failed
+- **Date:** 2026-10-29
+- **Decided:** each SA fetcher returns an empty list marked failed when its call fails or answers with an error, and a plain empty list when it answered with no alerts. More than half failed turns on `saDegraded`, which makes the start-up retries run.
+- **Against:** treating every failure as "no alerts" (the old way), which kept the retries from ever running.
+- **Why:** a quiet panel must mean quiet sources, not broken ones.
+- **By:** Claude, from the 2026-10-29 code review
+- **Status:** active
+
+## Ports stay where they are
+- **Date:** 2026-10-29
+- **Decided:** no shared ports file. The clock's own port (8769) is in `launch.sh` and `dock.json`, and a suite test keeps the two agreeing. Presser's (8771) and cmd fs's (8767) are those apps' home ports; cmd fs's can be changed with `MISSIONS_CALL`.
+- **Against:** one config file read by the shell script, the server and the page.
+- **Why:** the numbers are other apps' fixed addresses or already checked against each other; a config layer would add a moving part and fix nothing.
+- **By:** Claude, from the 2026-10-29 code review
+- **Status:** active
+
+## The suite holds only contract tests
+- **Date:** 2026-10-29
+- **Decided:** two archived tests move into the suite: `test_server_leaks.py` (what the server answers, to whom, and which fields it sends) and `test_dock_json.py` (that `dock.json`, the contract docks reads, agrees with `launch.sh` and `server.py`). Everything else stays archived.
+- **Against:** a rule in CLAUDE.md for changing `launch.sh` and `dock.json` together (the dock test enforces it); moving the clock-face, zone-row, SA, press and memory tests in, which check page behaviour or server internals and would rarely fail.
+- **Why:** Joe wants the suite to guard contracts, stay small and be worth running, not grow with every feature.
+- **By:** Joe set the bar; Claude picked the tests
+- **Status:** active
+
+## The test-run logger stays
+- **Date:** 2026-10-29
+- **Decided:** `tests/conftest.py` stays. It writes `test-runs.jsonl`, which every repo on this Mac keeps by rule; it was modelled on djitel's.
+- **Against:** removing it as a copy that doesn't belong here.
+- **Why:** without it no test run is recorded, and changes can't be reported by their failing and passing runs.
+- **By:** Claude, after Joe asked whether it belongs here
+- **Status:** active

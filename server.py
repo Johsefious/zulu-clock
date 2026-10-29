@@ -55,9 +55,10 @@ _cache = {}           # url -> (fetched_at, content_type, body)
 _calls = {}           # source -> {url: (at, ok, error)}, the latest outcome of each distinct call
 _lock = threading.Lock()
 
-# Only the page itself is served from the folder; nothing else in it (.git, test-runs.jsonl, docs) is reachable.
+# Only the page and its script are served from the folder; nothing else in it (.git, test-runs.jsonl, docs) is reachable.
 PAGE = '/zulu-clock.html'
-SERVED_FILES = {'/': PAGE, PAGE: PAGE}
+SCRIPT = '/zulu-clock.js'
+SERVED_FILES = {'/': PAGE, PAGE: PAGE, SCRIPT: SCRIPT}
 # A request must name this server by one of these, or it comes from a web page that is not the clock
 # (DNS rebinding), which must not reach cmd fs or Presser through us.
 OWN_HOSTS = {'127.0.0.1', 'localhost'}
@@ -77,8 +78,13 @@ def plain_error(e):
 
 
 def record(name, url, ok, error=''):
+    now = time.time()
     with _lock:
-        _calls.setdefault(name, {})[url] = (time.time(), ok, error)
+        _calls.setdefault(name, {})[url] = (now, ok, error)
+        for n in list(_calls):   # forget calls older than a day, and sources left with none
+            _calls[n] = {u: c for u, c in _calls[n].items() if c[0] >= now - FORGET_SECONDS}
+            if not _calls[n]:
+                del _calls[n]
 
 
 def call(name, url, data=None):
@@ -98,8 +104,11 @@ def call(name, url, data=None):
         raise
     record(name, url, True)
     if data is None:
+        now = time.time()
         with _lock:
-            _cache[url] = (time.time(), ctype, body)
+            _cache[url] = (now, ctype, body)
+            for u in [u for u, c in _cache.items() if now - c[0] >= CACHE_SECONDS]:
+                del _cache[u]   # answers past their lifetime are never served again
     return ctype, body
 
 
@@ -178,6 +187,7 @@ class Handler(SimpleHTTPRequestHandler):
             if path not in SERVED_FILES:
                 return self.send_error(404)
             self.path = SERVED_FILES[path]
+            self.revalidate = True   # a reload must not run a cached old script against the new page
             return super().do_GET()
         name = path[len('/source/'):]
         if name not in SOURCES:
@@ -221,6 +231,11 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store')
         self.end_headers()
         self.wfile.write(body)
+
+    def end_headers(self):
+        if getattr(self, 'revalidate', False):
+            self.send_header('Cache-Control', 'no-cache')
+        super().end_headers()
 
     def log_message(self, *args):
         pass

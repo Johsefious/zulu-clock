@@ -2,21 +2,16 @@
 this device's time big with ZULU small. Runs the page's own clockFace in node, with the zone named so the result does
 not depend on the machine running the test."""
 import json
-import os
-import re
 import subprocess
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from page_js import pick
+
 LA = 'America/Los_Angeles'
 NOW = "new Date('2026-10-29T15:59:12Z')"
 
 
 def run(call):
-    html = open(os.path.join(ROOT, 'zulu-clock.html')).read()
-    consts = [re.search(r'  const %s .*\n' % name, html).group(0) for name in ('pad', 'DAYS', 'MONS')]
-    fns = [re.search(r'  function %s\(.*?\n  \}\n' % name, html, re.S).group(0)
-           for name in ('zoneParts', 'localClock', 'zuluTime', 'clockFace')]
-    script = ''.join(consts + fns) + 'console.log(JSON.stringify(%s))' % call
+    script = pick('pad', 'DAYS', 'MONS', 'zoneParts', 'localClock', 'zuluTime', 'clockFace') + 'console.log(JSON.stringify(%s))' % call
     return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
 
 
