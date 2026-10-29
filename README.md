@@ -16,7 +16,7 @@ Needs macOS, Python 3, the `port` command from the ports repo (`~/Documents/repo
 ./launch.sh
 ```
 
-This starts `server.py` and opens the clock in your browser. `./launch.sh pink` (or `green`, `blue`) opens it in that
+This starts `server.py` and reloads a clock tab already open in Safari or Chrome, or opens the clock in your browser when none is. `./launch.sh pink` (or `green`, `blue`) opens it in that
 mode; `./launch-pink.sh` does the same for pink. `Ctrl+C` stops it. If its port is taken, `launch.sh` stops the holder
 only when it is an earlier Zulu Clock server; otherwise it says so and exits. To see the port, run `port list`.
 
