@@ -5,7 +5,7 @@ import json
 import os
 import re
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REQUIRED = ['dock', 'key', 'name', 'bundle_id', 'icon', 'page', 'tab_match']
 KNOWN = REQUIRED + ['icon_px', 'port', 'start', 'restart', 'ours', 'health', 'log', 'stale_if_changed',
                     'on_stale', 'restart_loses', 'reload_when', 'env', 'link_scheme']
