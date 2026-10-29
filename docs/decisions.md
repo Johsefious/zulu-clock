@@ -67,14 +67,6 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **By:** Claude, from the 2026-10-29 code review
 - **Status:** active
 
-## Ports stay where they are
-- **Date:** 2026-10-29
-- **Decided:** no shared ports file. The clock's own port (8769) is in `launch.sh` and `dock.json`, and a suite test keeps the two agreeing. Presser's (8771) and cmd fs's (8767) are those apps' home ports; cmd fs's can be changed with `MISSIONS_CALL`.
-- **Against:** one config file read by the shell script, the server and the page.
-- **Why:** the numbers are other apps' fixed addresses or already checked against each other; a config layer would add a moving part and fix nothing.
-- **By:** Claude, from the 2026-10-29 code review
-- **Status:** active
-
 ## The suite holds only contract tests
 - **Date:** 2026-10-29
 - **Decided:** two archived tests move into the suite: `test_server_leaks.py` (what the server answers, to whom, and which fields it sends) and `test_dock_json.py` (that `dock.json`, the contract docks reads, agrees with `launch.sh` and `server.py`). Everything else stays archived.
