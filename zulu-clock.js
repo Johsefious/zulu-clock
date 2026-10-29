@@ -231,6 +231,12 @@
     return { y: +p.year, mo: +p.month - 1, d: +p.day, wd: p.weekday.toUpperCase(), h: +p.hour, mi: +p.minute, s: +p.second, tz: p.timeZoneName };
   }
 
+  // One zone row: 12-hour time and the date line, read straight from that zone's parts.
+  function zoneRow(now, zone) {
+    const t = zoneParts(now, zone);
+    return { hm: `${pad(t.h % 12 || 12)}:${pad(t.mi)} ${t.h >= 12 ? 'PM' : 'AM'}`, meta: `${t.wd} ${MONS[t.mo]} ${pad(t.d)}` };
+  }
+
   // The big clock: this device's time, 24-hour, with its zone on the date line.
   function localClock(now, zone) {
     const t = zoneParts(now, zone);
@@ -297,8 +303,8 @@
       const cache = solarCache[z.zone];
       const el    = document.getElementById(`tz${i}-sun`);
       if (!el || !cache) return;
-      const local  = new Date(new Date().toLocaleString('en-US', { timeZone: z.zone }));
-      const nowMin = local.getHours() * 60 + local.getMinutes();
+      const t      = zoneParts(new Date(), z.zone);
+      const nowMin = t.h * 60 + t.mi;
       let arrow, label, timeStr;
       if (nowMin < cache.riseMin) {
         arrow = '▲'; label = 'SUNRISE'; timeStr = cache.riseStr;
@@ -460,12 +466,9 @@
 
     // Zones
     ZONES.forEach((z, i) => {
-      const d    = new Date(now.toLocaleString('en-US', { timeZone: z.zone }));
-      const h    = d.getHours(), m = d.getMinutes();
-      const h12  = h % 12 || 12;
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      document.getElementById(`tz${i}-hm`).textContent   = `${pad(h12)}:${pad(m)} ${ampm}`;
-      document.getElementById(`tz${i}-meta`).textContent = `${DAYS[d.getDay()]} ${MONS[d.getMonth()]} ${pad(d.getDate())}`;
+      const row = zoneRow(now, z.zone);
+      document.getElementById(`tz${i}-hm`).textContent   = row.hm;
+      document.getElementById(`tz${i}-meta`).textContent = row.meta;
     });
 
     // Solar display flips when sunrise/sunset passes — check once per minute
