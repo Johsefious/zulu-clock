@@ -78,8 +78,13 @@ def plain_error(e):
 
 
 def record(name, url, ok, error=''):
+    now = time.time()
     with _lock:
-        _calls.setdefault(name, {})[url] = (time.time(), ok, error)
+        _calls.setdefault(name, {})[url] = (now, ok, error)
+        for n in list(_calls):   # forget calls older than a day, and sources left with none
+            _calls[n] = {u: c for u, c in _calls[n].items() if c[0] >= now - FORGET_SECONDS}
+            if not _calls[n]:
+                del _calls[n]
 
 
 def call(name, url, data=None):
@@ -99,8 +104,11 @@ def call(name, url, data=None):
         raise
     record(name, url, True)
     if data is None:
+        now = time.time()
         with _lock:
-            _cache[url] = (time.time(), ctype, body)
+            _cache[url] = (now, ctype, body)
+            for u in [u for u, c in _cache.items() if now - c[0] >= CACHE_SECONDS]:
+                del _cache[u]   # answers past their lifetime are never served again
     return ctype, body
 
 
