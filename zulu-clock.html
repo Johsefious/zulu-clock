@@ -645,10 +645,10 @@
         </div>
       </div>
       <div class="zulu-center">
-        <div class="zulu-label">&#9668; LOCAL TIME &nbsp;&bull;&nbsp; <span id="local-zone">THIS DEVICE</span> &#9658;</div>
+        <div class="zulu-label" id="clock-label">&#9668; &nbsp; &#9658;</div>
         <span id="local-time">--:--:--</span>
         <div id="local-date">SYNCHRONIZING&hellip;</div>
-        <div id="zulu-small"><span class="zulu-small-lbl">ZULU</span> <span id="zulu-time">--:--:--Z</span></div>
+        <div id="zulu-small"><span class="zulu-small-lbl" id="small-lbl">&nbsp;</span> <span id="small-time">--:--:--</span></div>
       </div>
       <div class="zulu-flank">
         <div class="moon-panel" id="moon-panel" title="Change mode (M)">
@@ -793,7 +793,8 @@
     function tick() {
       if (!clockEl) return;
       const n = new Date();
-      clockEl.textContent = n.toLocaleTimeString('en-GB');   // same as localClock's; pad isn't defined yet here
+      // same as the big clock's first paint; pad isn't defined yet here
+      clockEl.textContent = document.documentElement.dataset.mode === 'pink' ? n.toLocaleTimeString('en-GB') : n.toISOString().slice(11, 19);
       setTimeout(tick, 1000 - n.getUTCMilliseconds() % 1000);
     }
     tick();
@@ -949,6 +950,21 @@
 
   function zuluTime(now) {
     return `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}Z`;
+  }
+
+  // What the clock block shows. Pink: this device's time big, Zulu small. Green and blue: Zulu big, local small.
+  function clockFace(now, pink, zone) {
+    const local = localClock(now, zone);
+    if (pink) {
+      const zoneName = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'long' })
+        .formatToParts(now).find(x => x.type === 'timeZoneName').value.toUpperCase();
+      return { label: `\u25C4 LOCAL TIME \u00A0\u2022\u00A0 ${zoneName} \u25BA`, big: local.time, date: local.date,
+               smallLbl: 'ZULU', small: zuluTime(now) };
+    }
+    const z = zuluTime(now), d = now;
+    return { label: '\u25C4 ZULU TIME \u00A0\u2022\u00A0 COORDINATED UNIVERSAL TIME \u25BA', big: z.slice(0, -1),
+             date: `${DAYS[d.getUTCDay()]}   ${pad(d.getUTCDate())} ${MONS[d.getUTCMonth()]} ${d.getUTCFullYear()}   Z`,
+             smallLbl: 'LOCAL', small: local.time };
   }
 
   // Whole days from today in `zone` to the next 25 December (0 on the day).
@@ -1137,13 +1153,13 @@
   function tick() {
     const now = new Date();
 
-    // This device's time, big; Zulu small under it
-    const local = localClock(now);
-    document.getElementById('local-time').textContent = local.time;
-    document.getElementById('local-date').textContent = local.date;
-    document.getElementById('zulu-time').textContent  = zuluTime(now);
-    document.getElementById('local-zone').textContent =
-      new Intl.DateTimeFormat('en-US', { timeZoneName: 'long' }).formatToParts(now).find(x => x.type === 'timeZoneName').value.toUpperCase();
+    // Pink: this device's time big, Zulu small. Green and blue: Zulu big, local small.
+    const face = clockFace(now, isPink());
+    document.getElementById('clock-label').textContent = face.label;
+    document.getElementById('local-time').textContent  = face.big;
+    document.getElementById('local-date').textContent  = face.date;
+    document.getElementById('small-lbl').textContent   = face.smallLbl;
+    document.getElementById('small-time').textContent  = face.small;
 
     // Pink mode's Christmas countdown turns over at local midnight
     if (now.getSeconds() === 0 && isPink()) saRenderItem(null);
