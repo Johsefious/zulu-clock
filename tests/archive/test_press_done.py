@@ -1,16 +1,14 @@
 """A finished Presser story (every step done) gets no card on the clock, the way an archived one gets none
 (GitHub issue 1). Runs the page's own pressVisible in node."""
 import json
-import os
-import re
 import subprocess
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from page_js import pick
+
 
 
 def visible(stories):
-    html = open(os.path.join(ROOT, 'zulu-clock.html')).read()
-    fn = re.search(r'function pressVisible\(.*?\n  \}\n', html, re.S).group(0)
+    fn = pick('pressVisible')
     script = fn + 'console.log(JSON.stringify(pressVisible(%s).map(s => s.id)))' % json.dumps(stories)
     return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
 

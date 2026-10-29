@@ -120,6 +120,9 @@ def test_press_carries_only_what_the_card_draws(clock):
 def test_only_the_page_is_served_from_the_folder(clock):
     assert get(clock, '/zulu-clock.html')[0] == 200
     assert get(clock, '/')[0] == 200
+    status, body = get(clock, '/zulu-clock.js')
+    assert status == 200 and b'function pressVisible' in body
     for path in ('/.git/config', '/test-runs.jsonl', '/server.py', '/docs/handoff.md', '/tests/conftest.py',
+                 '/tests/archive/page_js.py', '/zulu-clock.js.bak', '/zulu-clock.css',
                  '/%2e%2e/etc/passwd'):
         assert get(clock, path)[0] == 404, path
