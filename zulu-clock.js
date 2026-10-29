@@ -123,7 +123,6 @@
   const NEWS_REFRESH_MS = 5  * 60 * 1000;
   const SA_REFRESH_MS   = 4  * 60 * 1000;  // sit-aware: 4 min
   const SA_DWELL_MS     = 3500;             // ms per alert card before cycling
-  const PRESS_URL       = 'http://127.0.0.1:8771';  // the Presser app (its default port), opened on click
   const STATUS_REFRESH_MS = 60 * 1000;
   const PRESS_REFRESH_MS = 60 * 1000;
   const MISSIONS_REFRESH_MS = 2 * 60 * 1000;
@@ -1179,7 +1178,7 @@
     const head = document.getElementById('press-head');
     const body = document.getElementById('press-body');
     if (!sec || !head || !body) return;
-    sec.href = PRESS_URL + '/';
+    sec.href = '/go/presser';   // the server sends it on to Presser's home address
     if (!pressData) {
       sec.classList.add('press-off');
       const ps = statusOf('presser');

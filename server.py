@@ -8,16 +8,21 @@ latest calls went. The clock prints only what /status says.
 
 It also hands the clock cmd fs's missions at /missions, read through cmd fs's own
 mmGetMissions endpoint, never from the sheet. MISSIONS_CALL names a router that takes
-POST <MISSIONS_CALL>/call/<endpoint>: by default cmd fs's router on its home port 8767
-(cmd-fs tools/router.js); its read-only preview, tools/preview.js, speaks it too.
+POST <MISSIONS_CALL>/call/<endpoint>: by default cmd fs's router on its home port (cmd-fs
+tools/router.js); its read-only preview, tools/preview.js, speaks it too.
 When nothing listens there, /status says cmd fs is offline.
+
+No other app's port is typed here. Presser's and cmd fs's home ports come from `port home <repo>`
+(the ports repo's list, ports.json). If that lookup fails the source is `failing` in /status, with the reason.
 
 Usage: python3 server.py PORT DIRECTORY
 """
 import json
 import os
 import re
+import shutil
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -43,9 +48,12 @@ SOURCES = {
                                            'WFIGS_Incident_Locations_Current/FeatureServer/0/query'),
     'who':        ('WHO', 'health watch', 'https://www.who.int/rss-feeds/news-english.xml'),
     'swpc':       ('NOAA SWPC', 'geomagnetic storms', 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json'),
-    'presser':    ('Presser', 'press', 'http://127.0.0.1:8771/api/summary'),
+    'presser':    ('Presser', 'press', None),   # address: Presser's home port, found by home_port
 }
-MISSIONS_CALL = (os.environ.get('MISSIONS_CALL') or 'http://127.0.0.1:8767').rstrip('/')
+MISSIONS_CALL = (os.environ.get('MISSIONS_CALL') or '').rstrip('/')   # empty: cmd fs's home port from the list
+REPOS = {'presser': 'handmarks', 'mission-cmd': 'cmd-fs'}   # whose home port each source lives on
+PORT_FALLBACK = '/opt/homebrew/bin/port'   # a server the Dock starts may have a bare PATH
+LOOKUP = 'port home'   # the key under which a failed lookup is recorded
 STATUS_ORDER = list(SOURCES) + ['mission-cmd']
 CACHE_SECONDS = 120   # several open clocks share one call
 TIMEOUT = 10
@@ -85,6 +93,38 @@ def record(name, url, ok, error=''):
             _calls[n] = {u: c for u, c in _calls[n].items() if c[0] >= now - FORGET_SECONDS}
             if not _calls[n]:
                 del _calls[n]
+
+
+def home_port(repo):
+    """(port, '') from `port home <repo>`, or (None, plain reason)."""
+    cmd = shutil.which('port') or (PORT_FALLBACK if os.access(PORT_FALLBACK, os.X_OK) else None)
+    if not cmd:
+        return None, 'port command not found'
+    try:
+        r = subprocess.run([cmd, 'home', repo], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None, 'port command did not run'
+    out = r.stdout.strip()
+    if r.returncode == 1 and not out:
+        return None, f'no home port for {repo}'
+    if r.returncode or not out.isdigit():
+        return None, 'port command failed'
+    return int(out), ''
+
+
+def address(name):
+    """(base address, '') of a source that lives on another app's home port, or (None, reason). The outcome
+    is recorded: a failed lookup shows as the source failing; a good one clears an earlier failure."""
+    port, reason = home_port(REPOS[name])
+    with _lock:
+        if port:
+            _calls.get(name, {}).pop(LOOKUP, None)
+            if name in _calls and not _calls[name]:
+                del _calls[name]
+    if not port:
+        record(name, LOOKUP, False, reason)
+        return None, reason
+    return f'http://127.0.0.1:{port}', ''
 
 
 def call(name, url, data=None):
@@ -183,6 +223,14 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_body('application/json', json.dumps(status()).encode())
         if path == '/missions':
             return self.send_missions()
+        if path == '/go/presser':
+            base, reason = address('presser')
+            if not base:
+                return self.send_error(502, f'Presser address unknown: {reason}')
+            self.send_response(302)
+            self.send_header('Location', base + '/')
+            self.send_header('Content-Length', '0')
+            return self.end_headers()
         if not path.startswith('/source/'):
             if path not in SERVED_FILES:
                 return self.send_error(404)
@@ -192,7 +240,13 @@ class Handler(SimpleHTTPRequestHandler):
         name = path[len('/source/'):]
         if name not in SOURCES:
             return self.send_error(404, 'unknown source')
-        url = SOURCES[name][2] + ('?' + query if query else '')
+        base = SOURCES[name][2]
+        if base is None:
+            base, reason = address(name)
+            if not base:
+                return self.send_error(502, f'{SOURCES[name][0]} address unknown: {reason}')
+            base += '/api/summary'
+        url = base + ('?' + query if query else '')
         try:
             ctype, body = call(name, url)
         except Exception as e:
@@ -205,7 +259,12 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_body(ctype, body)
 
     def send_missions(self):
-        url = MISSIONS_CALL + '/call/mmGetMissions'
+        base = MISSIONS_CALL
+        if not base:
+            base, reason = address('mission-cmd')
+            if not base:
+                return self.send_error(502, f'cmd fs address unknown: {reason}')
+        url = base + '/call/mmGetMissions'
         try:
             _, body = call('mission-cmd', url, data=b'null')
         except Exception as e:
