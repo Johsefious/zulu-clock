@@ -823,9 +823,21 @@
   const FLAME_SA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16c3.314 0 6-2 6-5.5 0-1.5-.5-4-2.5-6 .25 1.5-1.25 2-1.25 2C11 4 9 .5 6 0c.357 2 .5 4-2 6-1.25 1-2 2.729-2 4.5C2 14 4.686 16 8 16"/><path opacity=".45" d="M8 15c-1.657 0-3-1-3-2.75 0-.75.25-2 1.25-3C6.125 10 7 10.5 7 10.5c-.375-1.25.5-3.25 2-3.5-.179 1-.25 2 1 3 .625.5 1 1.364 1 2.25C11 14 9.657 15 8 15"/></svg>`;
 
 
+  // A source that fails is told apart from one that answered with no alerts: the failure is an empty list marked
+  // failed, so merging the lists is unchanged and loadSitAware can count the failures.
+  async function saFetchT(url, ms) {
+    const r = await fetchT(url, ms);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r;
+  }
+  function saFailed() { return Object.assign([], { failed: true }); }
+  function saIsFailed(r) { return r.status === 'rejected' || !!(r.value && r.value.failed); }
+  // Degraded when more than half of the sources failed.
+  function saIsDegraded(results, total) { return results.filter(saIsFailed).length > total / 2; }
+
   async function saFetchSeismic() {
     try {
-      const r    = await fetchT(src('usgs'), 15000);
+      const r    = await saFetchT(src('usgs'), 15000);
       const data = await r.json();
       const ca   = data.features.filter(f => {
         const [lon, lat] = f.geometry.coordinates;
@@ -842,12 +854,12 @@
       const timeStr = minsAgo < 60 ? `${minsAgo}MIN AGO` : `${Math.round(minsAgo/60)}HR AGO`;
       const sev     = mag >= 6.5 ? 4 : mag >= 5.5 ? 3 : mag >= 4.5 ? 2 : 1;
       return [{ symbol:'≈', cat:'SEISMIC', headline:`M${mag.toFixed(1)} · ${place}`, detail:`${timeStr} · DEPTH ${depth}KM`, sev }];
-    } catch { return []; }
+    } catch { return saFailed(); }
   }
 
   async function saFetchNwsAlerts() {
     try {
-      const r    = await fetchT(src('nws', 'area=CA'), 15000);
+      const r    = await saFetchT(src('nws', 'area=CA'), 15000);
       const data = await r.json();
       const hits  = (data.features || []).filter(f =>
         f.properties.severity === 'Extreme' || f.properties.severity === 'Severe');
@@ -860,12 +872,12 @@
       const rawArea = hits[0].properties.areaDesc || '';
       const area    = rawArea.split(';')[0].replace(/ County$/i,'').replace(/ counties$/i,'').trim().toUpperCase().substring(0, 22) || 'CA';
       return [{ symbol: sym, cat:'CA ALERT', headline: types[0].toUpperCase(), detail:`${area} · ${count} ALERT${count > 1 ? 'S' : ''} · NWS`, sev }];
-    } catch { return []; }
+    } catch { return saFailed(); }
   }
 
   async function saFetchStorms() {
     try {
-      const r     = await fetchT(src('nhc'), 15000);
+      const r     = await saFetchT(src('nhc'), 15000);
       const data  = await r.json();
       const storms = data.activeStorms || [];
       if (!storms.length) return [];
@@ -885,12 +897,12 @@
         }
         return { symbol: SPIRAL_SA_SVG, cat:'TROPICAL', headline:`${(s.name||'UNNAMED').toUpperCase()} · ${type}`, detail:`${kt}KT · ${region}`, sev };
       });
-    } catch { return []; }
+    } catch { return saFailed(); }
   }
 
   async function saFetchEonet() {
     try {
-      const r    = await fetchT(src('eonet', 'status=open&limit=25'), 15000);
+      const r    = await saFetchT(src('eonet', 'status=open&limit=25'), 15000);
       const data = await r.json();
       // Wildfires handled by saFetchCAWildfires (NIFC); EONET covers other global events
       const WANT = { 'Volcanoes':3, 'Severe Storms':2, 'Floods':2 };
@@ -922,7 +934,7 @@
         const detail = region ? `EONET · ${region}` : 'NASA EONET';
         return { symbol: sym, cat: cat.toUpperCase(), headline: e.title.toUpperCase(), detail, sev };
       });
-    } catch { return []; }
+    } catch { return saFailed(); }
   }
 
   async function saFetchCAWildfires() {
@@ -932,9 +944,9 @@
       );
       const url = src('nifc', `where=${where}&outFields=IncidentName,DiscoveryAcres,PercentContained,POOCounty` +
         '&orderByFields=DiscoveryAcres+DESC&resultRecordCount=5&f=json');
-      const r    = await fetchT(url, 15000);
+      const r    = await saFetchT(url, 15000);
       const data = await r.json();
-      if (data.error) return [];
+      if (data.error) return saFailed();
       const fires = (data.features || []).map(f => f.attributes).filter(f => f.IncidentName);
       if (!fires.length) return [];
       return fires.map(f => {
@@ -946,15 +958,15 @@
         const tag    = (pct === null || pct === undefined) ? 'ACTIVE' : pct === 0 ? 'UNCONTAINED' : `${pct}% CONTAINED`;
         return { symbol: FLAME_SA_SVG, cat:'CA WILDFIRE', headline:`${name} FIRE`, detail:`${acres.toLocaleString()} AC · ${county} CTY · ${tag}`, sev };
       });
-    } catch { return []; }
+    } catch { return saFailed(); }
   }
 
   async function saFetchHealth() {
     try {
       // WHO removed the dedicated DON RSS; use general news feed and filter for outbreaks
-      const r    = await fetchT(src('who'), 15000);
+      const r    = await saFetchT(src('who'), 15000);
       const doc  = new DOMParser().parseFromString(await r.text(), 'text/xml');
-      if (doc.querySelector('parsererror')) return [];
+      if (doc.querySelector('parsererror')) return saFailed();
       const OUTBREAK_RE = /outbreak|disease|virus|epidemic|influenza|flu|h5n1|h5n2|bird flu|avian flu|mpox|measles|dengue|ebola|filovirus|hantavirus|cholera|typhoid|plague|marburg|avian|zoonot/i;
       const cutoff = Date.now() - 7 * 86400000; // show items up to 7 days old
       const hits = [...doc.querySelectorAll('item')]
@@ -969,12 +981,12 @@
         const ageStr  = ageDays < 1 ? `${Math.round(ageDays*24)}H AGO` : `${Math.round(ageDays)}D AGO`;
         return { symbol:'⊕', cat:'HEALTH WATCH', headline: title.substring(0, 38), detail:`WHO · ${ageStr}`, sev };
       });
-    } catch { return []; }
+    } catch { return saFailed(); }
   }
 
   async function saFetchSpace() {
     try {
-      const r    = await fetchT(src('swpc'), 15000);
+      const r    = await saFetchT(src('swpc'), 15000);
       const rows = await r.json();
       // rows[0] is headers; latest is last row
       const latest = rows[rows.length - 1];
@@ -984,7 +996,7 @@
       const sev  = kp >= 8 ? 4 : kp >= 7 ? 3 : 2;
       const hfImpact = kp >= 7 ? 'HF/NVIS DEGRADED' : kp >= 6 ? 'HF WATCH' : 'MINOR IMPACT';
       return [{ symbol:'✦', cat:'SPACE WX', headline:`${g} GEOMAGNETIC STORM`, detail:`Kp=${kp.toFixed(0)} · ${hfImpact}`, sev }];
-    } catch { return []; }
+    } catch { return saFailed(); }
   }
 
 
@@ -1113,7 +1125,7 @@
     const SA_FETCHERS = [saFetchSeismic, saFetchNwsAlerts, saFetchStorms, saFetchEonet, saFetchCAWildfires, saFetchHealth, saFetchSpace];
     const results = await Promise.allSettled(SA_FETCHERS.map(f => f()));
     const fresh   = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value).filter(Boolean);
-    saDegraded    = results.filter(r => r.status === 'rejected').length > SA_FETCHERS.length / 2;
+    saDegraded    = saIsDegraded(results, SA_FETCHERS.length);
     saAlerts      = saDeduplicateStorms(saMerge(fresh)).sort((a, b) => b.sev - a.sev);
     saIdx         = 0;
     saStartCycle();
