@@ -7,9 +7,9 @@ import subprocess
 from page_js import pick, source
 
 HARNESS = """
-let now = 1761754800123, timers = [], lates = [0, 40, 250, 90, 600, 5, 400, 180, 30, 700];
+let now = 1761754800123, timers = [], n = 0, lates = [0, 40, 250, 90, 600, 5, 400, 180, 30, 700];
 Date.now = () => now;
-globalThis.setTimeout = (fn, ms) => { timers.push({ at: now + ms, fn, late: lates[timers.length % lates.length] }); };
+globalThis.setTimeout = (fn, ms) => { timers.push({ at: now + ms, fn, late: lates[n++ % lates.length] }); };
 const shown = [];
 const work = () => shown.push(Math.floor(now / 1000));
 %s
@@ -25,7 +25,7 @@ console.log(JSON.stringify(shown));
 
 
 def test_a_late_timer_never_holds_or_skips_a_second():
-    script = HARNESS % pick('onTheSecond')
+    script = HARNESS.replace('%s', pick('onTheSecond'))
     shown = json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
     assert len(shown) > 100
     assert [b - a for a, b in zip(shown, shown[1:])] == [1] * (len(shown) - 1)
