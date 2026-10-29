@@ -6,9 +6,10 @@
 PORT="$(port home zulu-clock 2>/dev/null)" || { echo "  No home port for zulu-clock: run 'port home zulu-clock' to see why."; exit 1; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 URL="http://localhost:$PORT/zulu-clock.html"
+HOW=KEEP   # an already-open clock tab reloads on its own URL, unless a mode is passed
 # Optional mode: ./launch.sh pink (or green, blue). Without one, the clock opens in the last mode picked.
 case "${1:-}" in
-    green|pink|blue) URL="$URL?mode=$1" ;;
+    green|pink|blue) URL="$URL?mode=$1"; HOW=NEW ;;
     "") ;;
     *) echo "  Unknown mode '$1' (use green, pink or blue)"; exit 1 ;;
 esac
@@ -48,7 +49,8 @@ if command -v python3 >/dev/null 2>&1; then
     python3 "$SCRIPT_DIR/server.py" $PORT "$SCRIPT_DIR" >/dev/null 2>&1 &
     SERVER_PID=$!
     sleep 0.6
-    open "$URL"
+    # reload a clock tab that is already open (Safari or Chrome) instead of opening a second one
+    "$SCRIPT_DIR/tools/open_clock.sh" "$PORT" "$URL" "$HOW"
     trap "kill $SERVER_PID 2>/dev/null; echo ''; echo 'Server stopped.'" EXIT INT TERM
     wait $SERVER_PID
 else
