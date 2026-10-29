@@ -82,3 +82,11 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **Why:** without it no test run is recorded, and changes can't be reported by their failing and passing runs.
 - **By:** Claude, after Joe asked whether it belongs here
 - **Status:** active
+
+## Ports come from the ports list
+- **Date:** 2026-10-29
+- **Decided:** no port is typed into the code. `launch.sh` and `server.py` ask `port home <repo>` (a command added to the ports repo for this) for the clock's, Presser's and cmd fs's home ports, and the Press link goes through the server's `/go/presser`. `dock.json` keeps the clock's port written in, because docks reads it as plain JSON, and the suite checks it against the list. `MISSIONS_CALL` still overrides cmd fs's address.
+- **Against:** leaving 8769, 8771 and 8767 typed into four files (the dropped "Ports stay where they are" entry); reading `ports.json` directly, which would copy the lookup into this repo.
+- **Why:** the ports list is the one home of every port on this Mac; a moved port should need one edit there.
+- **By:** Joe agreed to the proposal; Claude built it
+- **Status:** active

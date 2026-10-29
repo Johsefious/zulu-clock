@@ -7,7 +7,7 @@ zulu-clock/
 ├── zulu-clock.html   the page: markup and styles (entry point for the browser); sets the colour mode inline in <head>
 ├── zulu-clock.js     the page's script: clock, moon, weather, ticker, SA panel, Press, Missions
 ├── server.py         local server (entry point): serves the folder, makes every outside call, answers /status
-├── launch.sh         starts server.py on its port and opens the page; stops only an earlier Zulu Clock server
+├── launch.sh         asks `port home zulu-clock` for its port, starts server.py on it and opens the page; stops only an earlier Zulu Clock server
 ├── launch-pink.sh    launch.sh opening in pink mode
 ├── dock.json         how a Dock icon starts, restarts and opens the clock
 ├── icons/            the Dock icon
@@ -25,10 +25,10 @@ zulu-clock/
 | Section | What it holds |
 |---|---|
 | LOADER | the loading screen and its own small clock; dismissed once weather, news and SA have answered |
-| CONFIG | `ZONES`, refresh intervals, `PRESS_URL`, `src` (the `/source/` address) and other fixed values |
+| CONFIG | `ZONES`, refresh intervals, `src` (the `/source/` address) and other fixed values |
 | STATUS | `renderStatus`: every status word, read from `/status` |
 | DOM BUILD | the zone rows, built once from `ZONES` |
-| HELPERS | `pad`, `zoneParts`, `localClock`, `zuluTime`, `clockFace`, the moon (`getMoonPhaseData`), `esc` and the other pure pieces |
+| HELPERS | `fetchT` (every loader's fetch: a time limit, and a non-ok answer throws `HTTP <status>`), `pad`, `zoneParts`, `localClock`, `zuluTime`, `clockFace`, the moon (`getMoonPhaseData`), `esc` and the other pure pieces |
 | CLOCK TICK | `tick()`: the clock block, zone rows (`zoneRow`, in HELPERS) and once-a-minute work |
 | WEATHER | METAR and Open-Meteo, sunrise and sunset |
 | TICKER | the scrolling news line, driven by `requestAnimationFrame` |
@@ -60,8 +60,11 @@ zulu-clock/
   kept only when it is http or https (`httpOnly`). Tests: `tests/archive/test_feed_text_is_text.py`, `test_server_leaks.py`.
 - **Mode.** The last colour mode picked is kept in the page's localStorage (`nextMode`). **A write that does not go
   through an endpoint.**
+- **Other apps' ports.** Presser's and cmd fs's addresses come from `port home handmarks` and `port home cmd-fs` on each
+  call (`server.py:home_port`, `address`); a failed lookup shows as that source failing in `/status`. No port is typed in
+  the code; `dock.json` holds the clock's own, and the suite checks it against the list.
 - **Press.** `server.py` reads the Presser app's summary route (the `presser` source); the page draws the cards
-  (`loadPress`, `pressRender`). Nothing is stored.
+  (`loadPress`, `pressRender`). Clicking Press opens `/go/presser`, which sends the browser on to Presser. Nothing is stored.
 - **Missions.** `GET /missions` makes `server.py` call cmd fs's `mmGetMissions` at `POST <MISSIONS_CALL>/call/mmGetMissions`
   (`server.py:send_missions`), never the sheet. A refusal that arrives as an HTTP 200 is recorded as a failure. The page
   draws them (`loadMissions`, `missionsRender`). Nothing is stored.
@@ -78,6 +81,7 @@ folder (`server.py:SERVED_FILES`); any other file is 404.
 - `GET /status`: per source, its state (`answering`, `partial`, `failing`, `offline`, `not called`), the latest error and how many calls answered.
 - `GET /source/<name>?<query>`: the call to that source's fixed address, answered as it came back (404 for a name not in `SOURCES`, 502 when the source did not answer). `presser` is cut to the
   fields the press cards draw (`server.py:trim_summary`).
+- `GET /go/presser`: 302 to Presser's home address, or 502 with the reason when the ports list has none.
 - `GET /missions`: cmd fs's missions, cut to the fields the mission cards draw, members as first names (`server.py:trim_mission`).
 - Any other path: the file in this folder.
 

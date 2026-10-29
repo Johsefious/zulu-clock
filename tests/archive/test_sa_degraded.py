@@ -1,17 +1,17 @@
 """The SA panel counts a source that failed (fetch rejected or HTTP error) as failed, so saDegraded can turn true and
 launchWithRetry backs off; a source that answered with no alerts is not a failure. Runs the page's own fetchers in
-node with fetchT stubbed."""
+node with fetch stubbed (the real fetchT turns an HTTP error into a rejection)."""
 import json
 import subprocess
 
 from page_js import pick
 
-FETCHERS = ['saFetchT', 'saFailed', 'saIsFailed', 'saIsDegraded', 'saFetchSpace', 'saFetchNwsAlerts']
+FETCHERS = ['fetchT', 'saFailed', 'saIsFailed', 'saIsDegraded', 'saFetchSpace', 'saFetchNwsAlerts']
 
 
 def run(fetch_stub, call):
     script = ('const src = (n, q) => "/source/" + n;\n'
-              'async function fetchT(url) { return (%s)(url); }\n' % fetch_stub
+              'const fetch = %s;\n' % fetch_stub
               + pick(*FETCHERS)
               + '(async () => console.log(JSON.stringify(await (%s))))();' % call)
     return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)

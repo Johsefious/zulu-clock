@@ -10,7 +10,7 @@ Where things live, what each call reads and how data moves: `docs/code-map.md`. 
 
 ## Install and run
 
-Needs macOS, Python 3 and an internet connection (weather, news and SA are live data).
+Needs macOS, Python 3, the `port` command from the ports repo (`~/Documents/repos/ports`, see its README) and an internet connection (weather, news and SA are live data). The clock finds its own port, Presser's and cmd fs's in the ports list.
 
 ```bash
 ./launch.sh

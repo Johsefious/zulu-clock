@@ -1,9 +1,10 @@
 """dock.json declares Zulu Clock's Dock icon the way docks reads it (docks/docs/dock-json.md, f61fbe6),
-and agrees with what the code does today: launch.sh's port, address and own-server check, the
+and agrees with what the code does today: the port the ports list gives launch.sh, its address and own-server check, the
 environment server.py reads, and which files server.py reads once at start."""
 import json
 import os
 import re
+import subprocess
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REQUIRED = ['dock', 'key', 'name', 'bundle_id', 'icon', 'page', 'tab_match']
@@ -44,7 +45,8 @@ def test_the_icon_is_an_svg_in_this_repo():
 
 def test_port_page_and_tab_match_agree_with_launch_sh():
     d = dock()
-    port = launch_sh('PORT')
+    assert 'port home zulu-clock' in launch_sh('PORT')
+    port = subprocess.run(['port', 'home', 'zulu-clock'], capture_output=True, text=True).stdout.strip()
     assert d['port'] == int(port)
     assert fill(d['page'], d) == launch_sh('URL').replace('$PORT', port)
     assert fill(d['tab_match'], d) in fill(d['page'], d)

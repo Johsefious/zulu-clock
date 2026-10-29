@@ -123,7 +123,6 @@
   const NEWS_REFRESH_MS = 5  * 60 * 1000;
   const SA_REFRESH_MS   = 4  * 60 * 1000;  // sit-aware: 4 min
   const SA_DWELL_MS     = 3500;             // ms per alert card before cycling
-  const PRESS_URL       = 'http://127.0.0.1:8771';  // the Presser app (its default port), opened on click
   const STATUS_REFRESH_MS = 60 * 1000;
   const PRESS_REFRESH_MS = 60 * 1000;
   const MISSIONS_REFRESH_MS = 2 * 60 * 1000;
@@ -164,7 +163,6 @@
   async function loadStatus() {
     try {
       const r = await fetchT('/status', 5000);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
       statusData = await r.json();
     } catch { statusData = null; }
     renderStatus();
@@ -383,7 +381,6 @@
         const url = src('open-meteo', `latitude=${z.lat}&longitude=${z.lon}` +
           `&daily=sunrise,sunset&forecast_days=2&timezone=${encodeURIComponent(z.zone)}`);
         const r    = await fetchT(url, 15000);
-        if (!r.ok) return false;
         const data = await r.json();
         const rises = data.daily?.sunrise;
         const sets  = data.daily?.sunset;
@@ -418,13 +415,14 @@
     return 'UNKNOWN';
   }
 
-  // Fetch with hard timeout — prevents hung API calls blocking indefinitely
+  // Fetch with hard timeout — prevents hung API calls blocking indefinitely; a non-ok answer throws `HTTP <status>`
   async function fetchT(url, ms = 9000) {
     const ctrl = new AbortController();
     const tid  = setTimeout(() => ctrl.abort(), ms);
     try {
       const r = await fetch(url, { signal: ctrl.signal });
       clearTimeout(tid);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r;
     } catch(e) {
       clearTimeout(tid);
@@ -752,7 +750,6 @@
 
   async function fetchFeed(feed) {
     const r = await fetchT(src(feed.source, feed.query), 15000);
-    if (!r.ok) throw new Error(`server.py ${r.status}`);
     return parseRssXml(await r.text()).map(i => ({ tag: feed.tag, cls: feed.cls, title: i.title, url: i.url }));
   }
 
@@ -825,11 +822,6 @@
 
   // A source that fails is told apart from one that answered with no alerts: the failure is an empty list marked
   // failed, so merging the lists is unchanged and loadSitAware can count the failures.
-  async function saFetchT(url, ms) {
-    const r = await fetchT(url, ms);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r;
-  }
   function saFailed() { return Object.assign([], { failed: true }); }
   function saIsFailed(r) { return r.status === 'rejected' || !!(r.value && r.value.failed); }
   // Degraded when more than half of the sources failed.
@@ -837,7 +829,7 @@
 
   async function saFetchSeismic() {
     try {
-      const r    = await saFetchT(src('usgs'), 15000);
+      const r    = await fetchT(src('usgs'), 15000);
       const data = await r.json();
       const ca   = data.features.filter(f => {
         const [lon, lat] = f.geometry.coordinates;
@@ -859,7 +851,7 @@
 
   async function saFetchNwsAlerts() {
     try {
-      const r    = await saFetchT(src('nws', 'area=CA'), 15000);
+      const r    = await fetchT(src('nws', 'area=CA'), 15000);
       const data = await r.json();
       const hits  = (data.features || []).filter(f =>
         f.properties.severity === 'Extreme' || f.properties.severity === 'Severe');
@@ -877,7 +869,7 @@
 
   async function saFetchStorms() {
     try {
-      const r     = await saFetchT(src('nhc'), 15000);
+      const r     = await fetchT(src('nhc'), 15000);
       const data  = await r.json();
       const storms = data.activeStorms || [];
       if (!storms.length) return [];
@@ -902,7 +894,7 @@
 
   async function saFetchEonet() {
     try {
-      const r    = await saFetchT(src('eonet', 'status=open&limit=25'), 15000);
+      const r    = await fetchT(src('eonet', 'status=open&limit=25'), 15000);
       const data = await r.json();
       // Wildfires handled by saFetchCAWildfires (NIFC); EONET covers other global events
       const WANT = { 'Volcanoes':3, 'Severe Storms':2, 'Floods':2 };
@@ -944,7 +936,7 @@
       );
       const url = src('nifc', `where=${where}&outFields=IncidentName,DiscoveryAcres,PercentContained,POOCounty` +
         '&orderByFields=DiscoveryAcres+DESC&resultRecordCount=5&f=json');
-      const r    = await saFetchT(url, 15000);
+      const r    = await fetchT(url, 15000);
       const data = await r.json();
       if (data.error) return saFailed();
       const fires = (data.features || []).map(f => f.attributes).filter(f => f.IncidentName);
@@ -964,7 +956,7 @@
   async function saFetchHealth() {
     try {
       // WHO removed the dedicated DON RSS; use general news feed and filter for outbreaks
-      const r    = await saFetchT(src('who'), 15000);
+      const r    = await fetchT(src('who'), 15000);
       const doc  = new DOMParser().parseFromString(await r.text(), 'text/xml');
       if (doc.querySelector('parsererror')) return saFailed();
       const OUTBREAK_RE = /outbreak|disease|virus|epidemic|influenza|flu|h5n1|h5n2|bird flu|avian flu|mpox|measles|dengue|ebola|filovirus|hantavirus|cholera|typhoid|plague|marburg|avian|zoonot/i;
@@ -986,7 +978,7 @@
 
   async function saFetchSpace() {
     try {
-      const r    = await saFetchT(src('swpc'), 15000);
+      const r    = await fetchT(src('swpc'), 15000);
       const rows = await r.json();
       // rows[0] is headers; latest is last row
       const latest = rows[rows.length - 1];
@@ -1179,7 +1171,7 @@
     const head = document.getElementById('press-head');
     const body = document.getElementById('press-body');
     if (!sec || !head || !body) return;
-    sec.href = PRESS_URL + '/';
+    sec.href = '/go/presser';   // the server sends it on to Presser's home address
     if (!pressData) {
       sec.classList.add('press-off');
       const ps = statusOf('presser');
