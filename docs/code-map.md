@@ -37,7 +37,7 @@ zulu-clock/
 | PRESS | `loadPress`, `pressRender` |
 | MISSIONS | `loadMissions`, `missionsRender` |
 | MODES | green, pink, blue; the moon click and the M key |
-| START | first paint and `launchWithRetry` for each loader |
+| START | first paint, `onTheSecond` (the once-a-second tick, lined up with the turn of each second) and `launchWithRetry` for each loader |
 
 `zulu-clock.html` holds the markup in the same order (topbar, Zulu, moon, zones, weather, Press, Missions, ticker) and all the styles.
 
