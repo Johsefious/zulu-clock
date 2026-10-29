@@ -4,7 +4,8 @@
 
 ```
 zulu-clock/
-├── zulu-clock.html   the whole page: clock, moon, weather, ticker, SA panel, Press, Missions (entry point for the browser)
+├── zulu-clock.html   the page: markup and styles (entry point for the browser); sets the colour mode inline in <head>
+├── zulu-clock.js     the page's script: clock, moon, weather, ticker, SA panel, Press, Missions
 ├── server.py         local server (entry point): serves the folder, makes every outside call, answers /status
 ├── launch.sh         starts server.py on its port and opens the page; stops only an earlier Zulu Clock server
 ├── launch-pink.sh    launch.sh opening in pink mode
@@ -20,10 +21,10 @@ zulu-clock/
 ## Data flow
 
 - **Outside sources.** The page never calls an outside site. It asks `server.py` at `/source/<name>?<query>`
-  (`zulu-clock.html:src`), and `server.py` calls the fixed address for that name (`server.py:SOURCES`, the one list of
+  (`zulu-clock.js:src`), and `server.py` calls the fixed address for that name (`server.py:SOURCES`, the one list of
   every outside source). Answers are cached 120 s in memory (`server.py:call`).
 - **Status.** `server.py:call` records how each distinct call went; `/status` reports it per source
-  (`server.py:status`). The page prints every status word from `/status` (`zulu-clock.html:renderStatus`).
+  (`server.py:status`). The page prints every status word from `/status` (`zulu-clock.js:renderStatus`).
 - **Weather and moon.** Open-Meteo and Aviation Weather through `/source/`; the moon is computed in the page
   (`getMoonPhaseData`), no source.
 - **Clocks and Christmas.** `clockFace` picks what the clock block shows: Zulu big (`zuluTime`) with `LOCAL` and this
@@ -32,7 +33,7 @@ zulu-clock/
 - **SA panel.** USGS, NWS, NHC, NASA EONET, NIFC, WHO and NOAA SWPC through `/source/` (`saFetch*`, merged by
   `saMerge`). Any alert seen in the last 48 hours is kept in the page's localStorage (`saLoadStored`). **This is a write
   that does not go through an endpoint.**
-- **Feed text.** Text from outside feeds goes into `innerHTML` only through `esc` (`zulu-clock.html:esc`); a feed link is
+- **Feed text.** Text from outside feeds goes into `innerHTML` only through `esc` (`zulu-clock.js:esc`); a feed link is
   kept only when it is http or https (`httpOnly`). Tests: `tests/archive/test_feed_text_is_text.py`, `test_server_leaks.py`.
 - **Mode.** The last colour mode picked is kept in the page's localStorage (`nextMode`). **A write that does not go
   through an endpoint.**
@@ -48,7 +49,7 @@ zulu-clock/
 None, read-only. Nothing the clock reads is changed through it. Every route is a GET:
 
 Every request must name this server as its Host (`127.0.0.1` or `localhost`), else 403 (`server.py:OWN_HOSTS`), so a
-web page on another name cannot reach cmd fs or Presser through it. Only `/` and `/zulu-clock.html` are served from the
+web page on another name cannot reach cmd fs or Presser through it. Only `/`, `/zulu-clock.html` and `/zulu-clock.js` are served from the
 folder (`server.py:SERVED_FILES`); any other file is 404.
 
 - `GET /status`: per source, its state (`answering`, `partial`, `failing`, `offline`, `not called`), the latest error and how many calls answered.

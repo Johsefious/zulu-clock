@@ -55,9 +55,10 @@ _cache = {}           # url -> (fetched_at, content_type, body)
 _calls = {}           # source -> {url: (at, ok, error)}, the latest outcome of each distinct call
 _lock = threading.Lock()
 
-# Only the page itself is served from the folder; nothing else in it (.git, test-runs.jsonl, docs) is reachable.
+# Only the page and its script are served from the folder; nothing else in it (.git, test-runs.jsonl, docs) is reachable.
 PAGE = '/zulu-clock.html'
-SERVED_FILES = {'/': PAGE, PAGE: PAGE}
+SCRIPT = '/zulu-clock.js'
+SERVED_FILES = {'/': PAGE, PAGE: PAGE, SCRIPT: SCRIPT}
 # A request must name this server by one of these, or it comes from a web page that is not the clock
 # (DNS rebinding), which must not reach cmd fs or Presser through us.
 OWN_HOSTS = {'127.0.0.1', 'localhost'}
