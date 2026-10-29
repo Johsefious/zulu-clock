@@ -32,6 +32,8 @@ zulu-clock/
 - **SA panel.** USGS, NWS, NHC, NASA EONET, NIFC, WHO and NOAA SWPC through `/source/` (`saFetch*`, merged by
   `saMerge`). Any alert seen in the last 48 hours is kept in the page's localStorage (`saLoadStored`). **This is a write
   that does not go through an endpoint.**
+- **Feed text.** Text from outside feeds goes into `innerHTML` only through `esc` (`zulu-clock.html:esc`); a feed link is
+  kept only when it is http or https (`httpOnly`). Tests: `tests/archive/test_feed_text_is_text.py`, `test_server_leaks.py`.
 - **Mode.** The last colour mode picked is kept in the page's localStorage (`nextMode`). **A write that does not go
   through an endpoint.**
 - **Press.** `server.py` reads the Presser app's summary route (the `presser` source); the page draws the cards
@@ -45,9 +47,14 @@ zulu-clock/
 
 None, read-only. Nothing the clock reads is changed through it. Every route is a GET:
 
+Every request must name this server as its Host (`127.0.0.1` or `localhost`), else 403 (`server.py:OWN_HOSTS`), so a
+web page on another name cannot reach cmd fs or Presser through it. Only `/` and `/zulu-clock.html` are served from the
+folder (`server.py:SERVED_FILES`); any other file is 404.
+
 - `GET /status`: per source, its state (`answering`, `partial`, `failing`, `offline`, `not called`), the latest error and how many calls answered.
-- `GET /source/<name>?<query>`: the call to that source's fixed address, answered as it came back (404 for a name not in `SOURCES`, 502 when the source did not answer).
-- `GET /missions`: cmd fs's missions, passed through.
+- `GET /source/<name>?<query>`: the call to that source's fixed address, answered as it came back (404 for a name not in `SOURCES`, 502 when the source did not answer). `presser` is cut to the
+  fields the press cards draw (`server.py:trim_summary`).
+- `GET /missions`: cmd fs's missions, cut to the fields the mission cards draw, members as first names (`server.py:trim_mission`).
 - Any other path: the file in this folder.
 
 ## Tests

@@ -1138,6 +1138,11 @@
   }
 
   // Strip HTML entities and tags from RSS titles
+  // Feed text goes into the page as text: every character that could open a tag or leave an attribute is escaped.
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
   function sanitize(s) {
     return s
       .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
@@ -1369,8 +1374,8 @@
   function buildNewsHTML(items) {
     return items.map(h => {
       const title = h.url
-        ? `<a class="news-link" href="${h.url}" target="_blank" rel="noopener noreferrer">${h.title}</a>`
-        : h.title;
+        ? `<a class="news-link" href="${esc(h.url)}" target="_blank" rel="noopener noreferrer">${esc(h.title)}</a>`
+        : esc(h.title);
       return `<span class="ntag ${h.cls}">[${h.tag}]</span>&nbsp;${title}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`;
     }).join('');
   }
@@ -1395,7 +1400,7 @@
   function buildSaTickerHTML(alerts) {
     if (!alerts.length) return '';
     return alerts.map(a => {
-      return `<span class="ntag" style="color:var(--green)">[SA]</span>&nbsp;${a.cat}: ${a.headline}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`;
+      return `<span class="ntag" style="color:var(--green)">[SA]</span>&nbsp;${esc(a.cat)}: ${esc(a.headline)}&nbsp;&nbsp;<span class="nsep">◆</span>&nbsp;&nbsp;`;
     }).join('');
   }
 
@@ -1438,6 +1443,9 @@
   // ─────────────────────────────────────────────────────────────
 
   // Shared XML parser for raw RSS responses
+  // A feed's link is kept only when it is a web address, never javascript: or data:.
+  function httpOnly(u) { u = (u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; }
+
   function parseRssXml(xml) {
     const doc   = new DOMParser().parseFromString(xml, 'text/xml');
     // Guard against parse errors (DOMParser returns <parsererror> element)
@@ -1446,7 +1454,7 @@
     if (!nodes.length) throw new Error('no <item> elements in feed');
     return nodes.map(el => ({
       title: sanitize((el.querySelector('title')?.textContent || '').replace(/ - [^-]+$/, '')),
-      url:   el.querySelector('link')?.textContent?.trim() || '',
+      url:   httpOnly(el.querySelector('link')?.textContent),
     })).filter(h => h.title);
   }
 
@@ -1733,9 +1741,9 @@
     }
     el.innerHTML = `
       <div class="sa-symbol" style="color:rgba(var(--fg-rgb),0.28)">${alert.symbol}</div>
-      <div class="sa-cat">${alert.cat}</div>
-      <div class="sa-headline">${alert.headline}</div>
-      <div class="sa-detail">${alert.detail}</div>`;
+      <div class="sa-cat">${esc(alert.cat)}</div>
+      <div class="sa-headline">${esc(alert.headline)}</div>
+      <div class="sa-detail">${esc(alert.detail)}</div>`;
     requestAnimationFrame(fitSaPanel);
   }
 

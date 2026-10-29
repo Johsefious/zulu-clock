@@ -42,3 +42,11 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **Why:** Joe asked for pink mode without disasters.
 - **By:** Joe
 - **Status:** active
+
+## The server answers only the clock and sends cards only what they draw
+- **Date:** 2026-10-29
+- **Decided:** `server.py` refuses a request whose Host is not `127.0.0.1` or `localhost`, serves only `zulu-clock.html` from the folder, and cuts `/missions` and the `presser` source to the fields the cards draw. Feed text reaches the page only through `esc`.
+- **Against:** passing cmd fs's and Presser's whole answers through; serving the folder as it was.
+- **Why:** a web page on another name could read missions (people, facilities, plans) through the server, and a bad feed item could do the same from inside the page.
+- **By:** Joe
+- **Status:** active
