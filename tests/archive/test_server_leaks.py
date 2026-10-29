@@ -81,6 +81,14 @@ def get(port, path, host=None):
     return r.status, r.read()
 
 
+def cache_control(port, path):
+    c = http.client.HTTPConnection('127.0.0.1', port, timeout=10)
+    c.request('GET', path)
+    r = c.getresponse()
+    r.read()
+    return r.status, r.getheader('Cache-Control')
+
+
 def test_a_foreign_host_name_gets_nothing(clock):
     for path in ('/missions', '/source/presser', '/status', '/zulu-clock.html'):
         assert get(clock, path, host='attacker.example')[0] == 403, path
@@ -126,3 +134,9 @@ def test_only_the_page_is_served_from_the_folder(clock):
                  '/tests/archive/page_js.py', '/zulu-clock.js.bak', '/zulu-clock.css',
                  '/%2e%2e/etc/passwd'):
         assert get(clock, path)[0] == 404, path
+
+
+def test_the_page_and_script_are_revalidated_on_every_load(clock):
+    # Without this Chrome may reuse a cached old zulu-clock.js against a new page after an update.
+    for path in ('/', '/zulu-clock.html', '/zulu-clock.js'):
+        assert cache_control(clock, path) == (200, 'no-cache'), path

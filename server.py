@@ -187,6 +187,7 @@ class Handler(SimpleHTTPRequestHandler):
             if path not in SERVED_FILES:
                 return self.send_error(404)
             self.path = SERVED_FILES[path]
+            self.revalidate = True   # a reload must not run a cached old script against the new page
             return super().do_GET()
         name = path[len('/source/'):]
         if name not in SOURCES:
@@ -230,6 +231,11 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store')
         self.end_headers()
         self.wfile.write(body)
+
+    def end_headers(self):
+        if getattr(self, 'revalidate', False):
+            self.send_header('Cache-Control', 'no-cache')
+        super().end_headers()
 
     def log_message(self, *args):
         pass
