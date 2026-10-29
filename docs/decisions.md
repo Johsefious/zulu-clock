@@ -90,3 +90,11 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **Why:** the ports list is the one home of every port on this Mac; a moved port should need one edit there.
 - **By:** Joe agreed to the proposal; Claude built it
 - **Status:** active
+
+## The launcher reloads an open clock tab
+- **Date:** 2026-10-29
+- **Decided:** `launch.sh` asks Safari, then Chrome, through `tools/open_clock.sh`, for a tab matching `:PORT/zulu-clock` (dock.json's `tab_match`) and reloads it; only a browser already running is asked, and when none has the tab, or macOS refuses the asking, it opens the page as before.
+- **Against:** always opening a new tab, which left the clock tab on the TV running the old page beside a duplicate.
+- **Why:** the clock lives in one tab, often AirPlayed to the TV, and a restart should reach that tab.
+- **By:** Joe chose the fix from a hand test; Claude built it
+- **Status:** active
