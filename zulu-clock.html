@@ -334,7 +334,7 @@
       margin-bottom: 1px;
     }
 
-    #zulu-time {
+    #local-time {
       font-family: 'VT323', 'Courier New', monospace;
       font-size: var(--zulu-size);
       letter-spacing: var(--zulu-lsp);
@@ -347,12 +347,20 @@
       display: block;
     }
 
-    #zulu-date {
+    #local-date {
       font-size: var(--zulu-date-size);
       letter-spacing: clamp(3px, 0.5vw, 6px);
       color: var(--green-dim);
       margin-top: 1px;
     }
+
+    #zulu-small {
+      font-size: var(--zulu-date-size);
+      letter-spacing: clamp(3px, 0.5vw, 6px);
+      color: var(--green);
+      margin-top: 4px;
+    }
+    #zulu-small .zulu-small-lbl { color: var(--green-dim); }
 
     /* ── Timezone row ─── */
     .tz-row {
@@ -577,7 +585,7 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
     }
-    /* Must be pixel-identical to #zulu-time so the crossfade is seamless */
+    /* Must be pixel-identical to #local-time so the crossfade is seamless */
     #loader-clock {
       font-family: 'VT323', 'Courier New', monospace;
       font-size: var(--zulu-size);
@@ -606,7 +614,7 @@
 <body>
   <!-- Loading screen — dismissed once wx + news + SA all respond (max 8 s) -->
   <div id="loader">
-    <div id="loader-clock">--:--:--Z</div>
+    <div id="loader-clock">--:--:--</div>
     <div id="loader-msg">LOADING<span class="ld">.</span><span class="ld">.</span><span class="ld">.</span></div>
   </div>
 
@@ -637,9 +645,10 @@
         </div>
       </div>
       <div class="zulu-center">
-        <div class="zulu-label">&#9668; ZULU TIME &nbsp;&bull;&nbsp; COORDINATED UNIVERSAL TIME &#9658;</div>
-        <span id="zulu-time">--:--:--</span>
-        <div id="zulu-date">SYNCHRONIZING&hellip;</div>
+        <div class="zulu-label">&#9668; LOCAL TIME &nbsp;&bull;&nbsp; <span id="local-zone">THIS DEVICE</span> &#9658;</div>
+        <span id="local-time">--:--:--</span>
+        <div id="local-date">SYNCHRONIZING&hellip;</div>
+        <div id="zulu-small"><span class="zulu-small-lbl">ZULU</span> <span id="zulu-time">--:--:--Z</span></div>
       </div>
       <div class="zulu-flank">
         <div class="moon-panel" id="moon-panel" title="Change mode (M)">
@@ -718,7 +727,7 @@
       const loaderEl  = document.getElementById('loader');
       const loaderMsg = document.getElementById('loader-msg');
       const loaderClk = document.getElementById('loader-clock');
-      const realClk   = document.getElementById('zulu-time');
+      const realClk   = document.getElementById('local-time');
 
       if (!loaderEl || !loaderClk || !realClk) { loaderEl && loaderEl.remove(); return; }
 
@@ -744,7 +753,7 @@
       void loaderClk.offsetWidth; // commit position as animation start-state
 
       // Step 2: center-to-center translation — no scale.
-      // #zulu-time is display:block and inherits .zulu-center's full width (set by
+      // #local-time is display:block and inherits .zulu-center's full width (set by
       // the wider label text), so rRect.width >> lcRect.width. Scaling by that ratio
       // horizontally smears the loader clock. Both clocks render identical glyphs at
       // the same font-size; aligning their visual glyph-centers is all that's needed.
@@ -784,8 +793,7 @@
     function tick() {
       if (!clockEl) return;
       const n = new Date();
-      const p = v => String(v).padStart(2,'0');
-      clockEl.textContent = `${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())}Z`;
+      clockEl.textContent = n.toLocaleTimeString('en-GB');   // same as localClock's; pad isn't defined yet here
       setTimeout(tick, 1000 - n.getUTCMilliseconds() % 1000);
     }
     tick();
@@ -924,6 +932,41 @@
   const pad   = n => String(n).padStart(2,'0');
   const DAYS  = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+  // Date and time parts of `now` in `zone` (undefined = this device's zone).
+  function zoneParts(now, zone) {
+    const f = new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', timeZoneName: 'short',
+      year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+    const p = Object.fromEntries(f.formatToParts(now).map(x => [x.type, x.value]));
+    return { y: +p.year, mo: +p.month - 1, d: +p.day, wd: p.weekday.toUpperCase(), h: +p.hour, mi: +p.minute, s: +p.second, tz: p.timeZoneName };
+  }
+
+  // The big clock: this device's time, 24-hour, with its zone on the date line.
+  function localClock(now, zone) {
+    const t = zoneParts(now, zone);
+    return { time: `${pad(t.h)}:${pad(t.mi)}:${pad(t.s)}`, date: `${t.wd}   ${pad(t.d)} ${MONS[t.mo]} ${t.y}   ${t.tz}` };
+  }
+
+  function zuluTime(now) {
+    return `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}Z`;
+  }
+
+  // Whole days from today in `zone` to the next 25 December (0 on the day).
+  function daysUntilChristmas(now, zone) {
+    const t = zoneParts(now, zone);
+    const today = Date.UTC(t.y, t.mo, t.d);
+    let xmas = Date.UTC(t.y, 11, 25);
+    if (xmas < today) xmas = Date.UTC(t.y + 1, 11, 25);
+    return Math.round((xmas - today) / 86400000);
+  }
+
+  // Pink mode's card in the alert panel.
+  function christmasItem(now, zone) {
+    const n = daysUntilChristmas(now, zone), t = zoneParts(now, zone);
+    const x = new Date(Date.UTC(t.y, t.mo, t.d) + n * 86400000);
+    return { cat: 'DAYS UNTIL CHRISTMAS', headline: n === 0 ? 'CHRISTMAS DAY' : n === 1 ? '1 DAY' : `${n} DAYS`,
+             detail: `${DAYS[x.getUTCDay()]}   ${pad(x.getUTCDate())} ${MONS[x.getUTCMonth()]} ${x.getUTCFullYear()}` };
+  }
 
   function formatSunTime(iso) {
     const t = iso.split('T')[1];
@@ -1094,11 +1137,16 @@
   function tick() {
     const now = new Date();
 
-    // Zulu
-    document.getElementById('zulu-time').textContent =
-      `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}Z`;
-    document.getElementById('zulu-date').textContent =
-      `${DAYS[now.getUTCDay()]}   ${pad(now.getUTCDate())} ${MONS[now.getUTCMonth()]} ${now.getUTCFullYear()}   Z`;
+    // This device's time, big; Zulu small under it
+    const local = localClock(now);
+    document.getElementById('local-time').textContent = local.time;
+    document.getElementById('local-date').textContent = local.date;
+    document.getElementById('zulu-time').textContent  = zuluTime(now);
+    document.getElementById('local-zone').textContent =
+      new Intl.DateTimeFormat('en-US', { timeZoneName: 'long' }).formatToParts(now).find(x => x.type === 'timeZoneName').value.toUpperCase();
+
+    // Pink mode's Christmas countdown turns over at local midnight
+    if (now.getSeconds() === 0 && isPink()) saRenderItem(null);
 
     // Zones
     ZONES.forEach((z, i) => {
@@ -1450,6 +1498,11 @@
   // Arm 2 is (x,y)→(100-x,100-y) symmetric — thick at bottom, tip at left.
   const SPIRAL_SA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" stroke="none"><path d="M50,28 C36,28 21,36 21,50 C21,68 32,86 50,86 C70,86 92,73 92,50 C92,70 70,79 50,79 C38,79 35,62 35,50 C35,43 43,40 50,40 C60,40 60,28 50,28 Z"/><path d="M50,72 C64,72 79,64 79,50 C79,32 68,14 50,14 C30,14 8,27 8,50 C8,30 30,21 50,21 C62,21 65,38 65,50 C65,57 57,60 50,60 C40,60 40,72 50,72 Z"/></svg>`;
 
+  // Six-armed snowflake — spokes with V branches, for pink mode's Christmas countdown
+  const SNOWFLAKE_SA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="5">${
+    [0, 60, 120, 180, 240, 300].map(a => `<g transform="rotate(${a} 50 50)"><line x1="50" y1="50" x2="50" y2="6"/><polyline points="38,16 50,28 62,16"/><polyline points="42,32 50,40 58,32"/></g>`).join('')
+  }<circle cx="50" cy="50" r="5" fill="currentColor" stroke="none"/></svg>`;
+
   // Bootstrap Icons bi-fire (MIT) — outer flame body + dimmed inner core
   const FLAME_SA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16c3.314 0 6-2 6-5.5 0-1.5-.5-4-2.5-6 .25 1.5-1.25 2-1.25 2C11 4 9 .5 6 0c.357 2 .5 4-2 6-1.25 1-2 2.729-2 4.5C2 14 4.686 16 8 16"/><path opacity=".45" d="M8 15c-1.657 0-3-1-3-2.75 0-.75.25-2 1.25-3C6.125 10 7 10.5 7 10.5c-.375-1.25.5-3.25 2-3.5-.179 1-.25 2 1 3 .625.5 1 1.364 1 2.25C11 14 9.657 15 8 15"/></svg>`;
 
@@ -1638,8 +1691,21 @@
                       : saClearSources().map(s => s.label.toUpperCase()).join(' · ');
   }
 
+  // Pink mode shows no alerts: a snowflake and the days until Christmas instead.
+  function isPink() { return document.documentElement.dataset.mode === 'pink'; }
+
   function saRenderItem(alert) {
     const el = document.getElementById('sa-item');
+    if (isPink()) {
+      const x = christmasItem(new Date());
+      el.innerHTML = `
+        <div class="sa-symbol" style="color:rgba(var(--fg-rgb),0.28)">${SNOWFLAKE_SA_SVG}</div>
+        <div class="sa-cat">${x.cat}</div>
+        <div class="sa-headline">${x.headline}</div>
+        <div class="sa-detail">${x.detail}</div>`;
+      requestAnimationFrame(fitSaPanel);
+      return;
+    }
     if (!alert) {
       el.innerHTML = `
         <div class="sa-symbol" style="color:rgba(var(--fg-rgb),0.18)">◆</div>
@@ -1659,7 +1725,7 @@
 
   function saRenderDots() {
     const el = document.getElementById('sa-dots');
-    if (saAlerts.length <= 1) { el.innerHTML = ''; return; }
+    if (saAlerts.length <= 1 || isPink()) { el.innerHTML = ''; return; }
     el.innerHTML = saAlerts.map((_, i) =>
       `<div class="sa-dot${i === saIdx ? ' active' : ''}"></div>`
     ).join('');
@@ -1671,6 +1737,7 @@
     saRenderDots();
     if (saAlerts.length <= 1) return;
     saCycleTmr = setInterval(() => {
+      if (isPink()) return;
       const el = document.getElementById('sa-item');
       el.classList.add('fading');
       setTimeout(() => {
@@ -1960,6 +2027,8 @@
     if (mode === 'green') delete document.documentElement.dataset.mode;
     else document.documentElement.dataset.mode = mode;
     try { localStorage.setItem('zulu-mode', mode); } catch {}
+    saRenderItem(saAlerts[saIdx] || null);   // pink swaps alerts for the Christmas countdown
+    saRenderDots();
   }
   document.getElementById('moon-panel').addEventListener('click', nextMode);
   document.addEventListener('keydown', e => {
