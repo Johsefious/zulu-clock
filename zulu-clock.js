@@ -1360,8 +1360,13 @@
   // ─────────────────────────────────────────────────────────────
   //  START
   // ─────────────────────────────────────────────────────────────
+  // Runs work just after each second turns, rescheduled from the current milliseconds so a late timer
+  // can't hold a second or skip one (a fixed 1000 ms interval drifts across the boundary).
+  function onTheSecond(work) {
+    setTimeout(() => { work(); onTheSecond(work); }, 1000 - Date.now() % 1000 + 5);
+  }
   tick();
-  setInterval(() => { tick(); if (pressData) pressRender(); }, 1000);
+  onTheSecond(() => { tick(); if (pressData) pressRender(); });
 
   drawMoon();
   setInterval(drawMoon, 60 * 60 * 1000); // moon phase changes slowly, hourly is plenty
