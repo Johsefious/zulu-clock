@@ -1,6 +1,6 @@
 # Zulu Clock
 
-A full-screen tactical time display for macOS: this device's local time large, UTC (Zulu) time under it, five other time zones, the moon, California weather,
+A full-screen tactical time display for macOS: Zulu time large with this device's local time under it (pink mode swaps them), five other time zones, the moon, California weather,
 a news ticker, a rotating situational-awareness panel (earthquakes, storms, fires, outbreaks, space weather), a Press
 card per story and the next four missions. It is one page, `zulu-clock.html`, plus `server.py`, a small local server that
 makes every outside call for it.

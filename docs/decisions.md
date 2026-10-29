@@ -27,11 +27,11 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **By:** Joe
 - **Status:** active
 
-## The big clock is local time, Zulu is a small line
+## Zulu is the big clock in green and blue, local time in pink
 - **Date:** 2026-10-29
-- **Decided:** the big clock shows this device's own time zone in 24 hours, with the zone's name in its label and date line; Zulu time moves to a small line under the date.
-- **Against:** Zulu as the big clock.
-- **Why:** the time that matters most at a glance is the local one.
+- **Decided:** green and blue show Zulu big with a small `LOCAL` line and this device's time under it. Pink swaps them: this device's time big (zone's name in its label and date line), Zulu small.
+- **Against:** local time big in every mode (tried earlier the same day); Zulu big with no local time.
+- **Why:** the clock is a Zulu clock first; local time is the extra line, and pink is the one mode that flips it.
 - **By:** Joe
 - **Status:** active
 
