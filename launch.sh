@@ -2,7 +2,8 @@
 # Zulu Clock v1 — launcher for macOS
 # Starts a local HTTP server so the app works in any browser (Safari, Chrome, etc.)
 
-PORT=8769
+# The clock's port comes from the ports list (the ports repo), never typed here.
+PORT="$(port home zulu-clock 2>/dev/null)" || { echo "  No home port for zulu-clock: run 'port home zulu-clock' to see why."; exit 1; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 URL="http://localhost:$PORT/zulu-clock.html"
 # Optional mode: ./launch.sh pink (or green, blue). Without one, the clock opens in the last mode picked.
