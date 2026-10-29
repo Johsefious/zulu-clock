@@ -16,8 +16,9 @@ def pick(*names):
     found = []
     for name in names:
         bare = name.rstrip('?')
-        m = (re.search(r'  (?:async )?function %s\(.*?\n  \}\n' % bare, js, re.S)
-             or re.search(r'  const %s .*\n' % bare, js))
+        # A function runs from its declaration, at any indent, to the first `}` alone at that same indent.
+        m = (re.search(r'^([ \t]*)(?:async )?function %s\(.*?\n\1\}[ \t]*\n' % bare, js, re.S | re.M)
+             or re.search(r'^[ \t]*const %s .*\n' % bare, js, re.M))
         assert m or name.endswith('?'), f'{bare} is not in zulu-clock.js'
         found.append(m.group(0) if m else '')
     return ''.join(found)
