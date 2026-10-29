@@ -1,6 +1,6 @@
 # Zulu Clock
 
-A full-screen tactical time display for macOS: UTC (Zulu) time and five other time zones, the moon, California weather,
+A full-screen tactical time display for macOS: this device's local time large, UTC (Zulu) time under it, five other time zones, the moon, California weather,
 a news ticker, a rotating situational-awareness panel (earthquakes, storms, fires, outbreaks, space weather), a Press
 card per story and the next four missions. It is one page, `zulu-clock.html`, plus `server.py`, a small local server that
 makes every outside call for it.
@@ -23,7 +23,7 @@ only when it is an earlier Zulu Clock server; otherwise it says so and exits. To
 Opening `zulu-clock.html` directly (`open zulu-clock.html`) shows the time, time zones and moon only, because the
 rest comes through `server.py`.
 
-Click the moon or press `M` to change mode. Full screen: Safari `⌘ Ctrl F`, Chrome `⌘ Shift F` or F11.
+Click the moon or press `M` to change mode. Pink mode shows the days until Christmas in place of the alerts. Full screen: Safari `⌘ Ctrl F`, Chrome `⌘ Shift F` or F11.
 
 Missions come from cmd fs's router. To point the clock somewhere else, set `MISSIONS_CALL`:
 `MISSIONS_CALL=http://127.0.0.1:<port> ./launch.sh`.

@@ -26,6 +26,8 @@ zulu-clock/
   (`server.py:status`). The page prints every status word from `/status` (`zulu-clock.html:renderStatus`).
 - **Weather and moon.** Open-Meteo and Aviation Weather through `/source/`; the moon is computed in the page
   (`getMoonPhaseData`), no source.
+- **Clocks and Christmas.** The big clock is this device's zone (`localClock`), Zulu the small line under it
+  (`zuluTime`). In pink mode the SA panel shows the days until Christmas (`christmasItem`), computed in the page, no source.
 - **Headlines.** Google News World, US and CA through `/source/` (`loadHeadlines`).
 - **SA panel.** USGS, NWS, NHC, NASA EONET, NIFC, WHO and NOAA SWPC through `/source/` (`saFetch*`, merged by
   `saMerge`). Any alert seen in the last 48 hours is kept in the page's localStorage (`saLoadStored`). **This is a write
