@@ -55,6 +55,13 @@ _cache = {}           # url -> (fetched_at, content_type, body)
 _calls = {}           # source -> {url: (at, ok, error)}, the latest outcome of each distinct call
 _lock = threading.Lock()
 
+# Only the page itself is served from the folder; nothing else in it (.git, test-runs.jsonl, docs) is reachable.
+PAGE = '/zulu-clock.html'
+SERVED_FILES = {'/': PAGE, PAGE: PAGE}
+# A request must name this server by one of these, or it comes from a web page that is not the clock
+# (DNS rebinding), which must not reach cmd fs or Presser through us.
+OWN_HOSTS = {'127.0.0.1', 'localhost'}
+
 
 def now_iso(t=None):
     return datetime.fromtimestamp(t or time.time(), timezone.utc).isoformat(timespec='seconds')
@@ -96,6 +103,41 @@ def call(name, url, data=None):
     return ctype, body
 
 
+def first_name(n):
+    return str(n).split(' ')[0]
+
+
+def trim_mission(m):
+    """The fields a mission card draws, nothing else: members are cut to first names, a received plan to its review time."""
+    plan = m.get('planReceived')
+    return {
+        'label': m.get('label', ''), 'days_out': m.get('days_out'), 'types': m.get('types') or [],
+        'facilities': m.get('facilities') or [], 'members': [first_name(n) for n in m.get('members') or []],
+        'confirmed': m.get('confirmed'), 'briefingSent': m.get('briefingSent'), 'approved': m.get('approved'),
+        'cancelled': m.get('cancelled'), 'gate_warning': m.get('gate_warning'), 'planDue': m.get('planDue'),
+        'planReceived': {'review_by': plan.get('review_by')} if isinstance(plan, dict) else None,
+    }
+
+
+def pick(d, keys):
+    return {k: d.get(k) for k in keys}
+
+
+def trim_story(st):
+    out = pick(st, ('id', 'short_name', 'archived', 'countdown_to', 'doc', 'progress', 'overdue', 'today',
+                    'upcoming', 'old_builder'))
+    nxt = st.get('next')
+    out['next'] = pick(nxt, ('text', 'state')) if isinstance(nxt, dict) else None
+    out['sends_open'] = [pick(s, ('label', 'due')) for s in st.get('sends_open') or []]
+    return out
+
+
+def trim_summary(d):
+    """The Presser summary down to the fields a press card draws."""
+    return {'stories': [trim_story(st) for st in d['stories']],
+            'totals': pick(d.get('totals') or {}, ('overdue', 'today', 'messages'))}
+
+
 def status():
     """Per source: how its latest calls went. 'answering' means each distinct call's latest try
     got a reply within the time limit; it says nothing about what the reply contained."""
@@ -126,11 +168,16 @@ def status():
 class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path, _, query = self.path.partition('?')
+        if self.headers.get('Host', '').partition(':')[0] not in OWN_HOSTS:
+            return self.send_error(403, 'not the clock')
         if path == '/status':
             return self.send_body('application/json', json.dumps(status()).encode())
         if path == '/missions':
             return self.send_missions()
         if not path.startswith('/source/'):
+            if path not in SERVED_FILES:
+                return self.send_error(404)
+            self.path = SERVED_FILES[path]
             return super().do_GET()
         name = path[len('/source/'):]
         if name not in SOURCES:
@@ -140,6 +187,11 @@ class Handler(SimpleHTTPRequestHandler):
             ctype, body = call(name, url)
         except Exception as e:
             return self.send_error(502, f'{SOURCES[name][0]} did not answer: {plain_error(e)}')
+        if name == 'presser':
+            try:
+                ctype, body = 'application/json', json.dumps(trim_summary(json.loads(body))).encode()
+            except (ValueError, KeyError, TypeError, AttributeError):
+                return self.send_error(502, 'Presser did not send a summary')
         self.send_body(ctype, body)
 
     def send_missions(self):
@@ -156,6 +208,10 @@ class Handler(SimpleHTTPRequestHandler):
         if isinstance(answer, dict) and answer.get('refused'):
             record('mission-cmd', url, False, f"refused {answer['refused']}: {answer.get('reason', '')}")
             return self.send_error(502, f"cmd fs refused: {answer['refused']}")
+        try:
+            body = json.dumps({'missions': [trim_mission(m) for m in answer['missions']]}).encode()
+        except (KeyError, TypeError, AttributeError):
+            return self.send_error(502, 'cmd fs did not send missions')
         self.send_body('application/json', body)
 
     def send_body(self, ctype, body):
