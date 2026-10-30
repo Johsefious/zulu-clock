@@ -7,7 +7,7 @@ zulu-clock/
 ├── zulu-clock.html   the page: markup and styles (entry point for the browser); sets the colour mode inline in <head>
 ├── zulu-clock.js     the page's script: clock, moon, weather, ticker, SA panel, Press, Missions
 ├── server.py         local server (entry point): serves the folder, makes every outside call, answers /status
-├── launch.sh         asks `port home zulu-clock` for its port, starts server.py on it and reloads an already-open clock tab (or opens the page); stops only an earlier Zulu Clock server
+├── launch.sh         asks `port home zulu-clock` for its port, starts server.py on it (with the mode, if one was given) and opens the page unless an open clock page checks in; stops only an earlier Zulu Clock server
 ├── launch-pink.sh    launch.sh opening in pink mode
 ├── dock.json         how a Dock icon starts, restarts and opens the clock, and what a click and Quit do to an open clock tab; declares restart safety
 ├── icons/            the Dock icon
@@ -16,7 +16,7 @@ zulu-clock/
 │   ├── conftest.py   writes one line per pytest run to test-runs.jsonl
 │   └── archive/      builders' tests
 ├── tools/failure_history.py   reads test-runs.jsonl back: which tests failed, first and last time
-└── tools/open_clock.sh        launch.sh's opener: reloads an open Safari/Chrome tab matching `:PORT/zulu-clock`, else `open`
+└── tools/open_clock.sh        launch.sh's opener: waits up to 6 s for `/__clock/seen`, then `open` only if no clock page checked in; never scripts the browser
 ```
 
 ### Page sections
@@ -38,7 +38,7 @@ zulu-clock/
 | PRESS | `loadPress`, `pressRender` |
 | MISSIONS | `loadMissions`, `missionsRender` |
 | MODES | green, pink, blue; the moon click and the M key |
-| START | first paint, `onTheSecond` (the once-a-second tick, lined up with the turn of each second) and `launchWithRetry` for each loader |
+| START | first paint, `onTheSecond` (the once-a-second tick, lined up with the turn of each second) and `launchWithRetry` for each loader, and the heartbeat (`heartbeatStep`): every 2 s it says hello and reloads the page when the server's boot id changes |
 
 `zulu-clock.html` holds the markup in the same order (topbar, Zulu, moon, zones, weather, Press, Missions, ticker) and all the styles.
 
@@ -91,6 +91,8 @@ Reads, all GET:
 - `GET /__docks/restart-status`: `{"clear": true, "reason", "as_of"}`, built fresh, no outside calls (`server.py:restart_status`). Docks reads it in `docks check`.
 - `GET /go/presser`: 302 to Presser's home address, or 502 with the reason when the ports list has none.
 - `GET /missions`: cmd fs's missions, cut to the fields the mission cards draw, members as first names (`server.py:trim_mission`).
+- `GET /__clock/hello`: `{"boot", "mode"}`, this server run's id and the launch mode (or null); notes in memory that a clock page checked in. The page calls it every 2 s.
+- `GET /__clock/seen`: `{"seen", "as_of"}`, whether a clock page has said hello since this start. `tools/open_clock.sh` reads it.
 - Any other path: the file in this folder.
 
 ## Tests
