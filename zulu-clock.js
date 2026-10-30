@@ -124,6 +124,7 @@
   const SA_REFRESH_MS   = 4  * 60 * 1000;  // sit-aware: 4 min
   const SA_DWELL_MS     = 3500;             // ms per alert card before cycling
   const STATUS_REFRESH_MS = 60 * 1000;
+  const HEARTBEAT_MS = 2000;   // how often the page says hello to the server (a restart shows as a new boot id)
   const PRESS_REFRESH_MS = 60 * 1000;
   const MISSIONS_REFRESH_MS = 2 * 60 * 1000;
   const TICKER_PX_PER_FRAME = 1.3;
@@ -1365,6 +1366,27 @@
   function onTheSecond(work) {
     setTimeout(() => { work(); onTheSecond(work); }, 1000 - Date.now() % 1000 + 5);
   }
+  // Says hello to the server; a new boot id means it restarted, so the page reloads (on the launch mode, if it gave one).
+  // `first` is the boot id heard first; go is null (stay) or the address to load.
+  function heartbeatStep(first, answer, path, search) {
+    const boot = answer && answer.boot;
+    if (!boot) return { first, go: null };
+    if (!first) return { first: boot, go: null };
+    if (boot === first) return { first, go: null };
+    return { first, go: path + (answer.mode ? '?mode=' + answer.mode : search) };
+  }
+  let heartbeatBoot = null;
+  setInterval(async () => {
+    try {
+      const r = await fetchT('/__clock/hello', 1500);
+      const step = heartbeatStep(heartbeatBoot, await r.json(), location.pathname, location.search);
+      heartbeatBoot = step.first;
+      if (step.go === null) return;
+      if (step.go === location.pathname + location.search) location.reload();
+      else location.assign(step.go);
+    } catch {}   // a server that is down or slow is not news; the next beat asks again
+  }, HEARTBEAT_MS);
+
   tick();
   onTheSecond(() => { tick(); if (pressData) pressRender(); });
 

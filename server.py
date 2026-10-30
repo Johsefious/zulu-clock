@@ -15,10 +15,15 @@ When nothing listens there, /status says cmd fs is offline.
 No other app's port is typed here. Presser's and cmd fs's home ports come from `port home <repo>`
 (the ports repo's list, ports.json). If that lookup fails the source is `failing` in /status, with the reason.
 
-Usage: python3 server.py PORT DIRECTORY
+A clock page says hello at /__clock/hello every couple of seconds. The answer carries this run's boot id, so a page
+that sees the id change knows the server restarted and reloads itself; it also carries the launch mode, if one was given.
+/__clock/seen tells the launcher whether any page has said hello since this start, so it opens a tab only when none is there.
+
+Usage: python3 server.py PORT DIRECTORY [green|pink|blue]
 """
 import json
 import os
+import secrets
 import re
 import shutil
 import socket
@@ -62,6 +67,10 @@ OFFLINE = 'Connection refused'   # plain_error's words when nothing listens at t
 _cache = {}           # url -> (fetched_at, content_type, body)
 _calls = {}           # source -> {url: (at, ok, error)}, the latest outcome of each distinct call
 _lock = threading.Lock()
+BOOT = secrets.token_hex(8)   # names this run of the server; a page that sees it change reloads
+MODES = ('green', 'pink', 'blue')
+launch_mode = None            # set at start from the optional third argument
+page_seen = False             # has a clock page said hello since this start
 
 # Only the page and its script are served from the folder; nothing else in it (.git, test-runs.jsonl, docs) is reachable.
 PAGE = '/zulu-clock.html'
@@ -236,6 +245,12 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_body('application/json', json.dumps(restart_status()).encode())
         if path == '/status':
             return self.send_body('application/json', json.dumps(status()).encode())
+        if path == '/__clock/hello':
+            global page_seen
+            page_seen = True
+            return self.send_body('application/json', json.dumps({'boot': BOOT, 'mode': launch_mode}).encode())
+        if path == '/__clock/seen':
+            return self.send_body('application/json', json.dumps({'seen': page_seen, 'as_of': now_iso()}).encode())
         if path == '/missions':
             return self.send_missions()
         if path == '/go/presser':
@@ -342,6 +357,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     port, directory = int(sys.argv[1]), sys.argv[2]
+    launch_mode = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] in MODES else None
     httpd = ThreadingHTTPServer(('127.0.0.1', port), partial(Handler, directory=directory))
     httpd.serve_forever()   # returns after POST /__docks/close; the process then ends
     httpd.server_close()
