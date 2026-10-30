@@ -1,7 +1,7 @@
 """Zulu Clock types no other app's port number: it asks `port home <repo>` (the ports repo's list).
 
 - launch.sh takes its own port from `port home zulu-clock` and says so in one line when that fails.
-- server.py finds Presser (repo presser, else handmarks until the Ports move is done) and cmd fs (cmd-fs) the same way; a failed lookup is `failing` in /status
+- server.py finds Presser (repo presser) and cmd fs (cmd-fs) the same way; a failed lookup is `failing` in /status
   with a plain reason, never a crash. MISSIONS_CALL still wins for cmd fs.
 - The Press link goes through GET /go/presser (302 to Presser's home address); the page holds no Presser port.
 - dock.json keeps its literal port, and it must equal what `port home zulu-clock` prints.
@@ -67,7 +67,7 @@ def test_launch_sh_reads_its_port_from_the_list():
 # ---- server.py: the lookup ----
 
 def test_home_port_finds_presser_and_cmd_fs_in_the_list():
-    assert server.home_port('handmarks') == (int(home('handmarks')), '')
+    assert server.home_port('presser') == (int(home('presser')), '')
     assert server.home_port('cmd-fs') == (int(home('cmd-fs')), '')
 
 
@@ -75,12 +75,12 @@ def test_home_port_says_why_in_plain_words(monkeypatch):
     assert server.home_port('no-such-repo') == (None, 'no home port for no-such-repo')
     monkeypatch.setattr(server.shutil, 'which', lambda name: None)
     monkeypatch.setattr(server, 'PORT_FALLBACK', '/nonexistent/port')
-    assert server.home_port('handmarks') == (None, 'port command not found')
+    assert server.home_port('presser') == (None, 'port command not found')
 
 
 def test_home_port_works_with_a_bare_path(monkeypatch):
     monkeypatch.setenv('PATH', '/usr/bin:/bin')
-    assert server.home_port('handmarks')[0] == int(home('handmarks'))
+    assert server.home_port('presser')[0] == int(home('presser'))
 
 
 # ---- server.py: routes and status ----
@@ -118,7 +118,7 @@ def state(port, name):
 def test_go_presser_sends_the_browser_to_presser(clock):
     status, location, _ = get(clock, '/go/presser')
     assert status == 302
-    assert location == f"http://127.0.0.1:{home('handmarks')}/"
+    assert location == f"http://127.0.0.1:{home('presser')}/"
 
 
 def test_go_presser_has_the_same_host_check_as_every_route(clock):
@@ -126,10 +126,10 @@ def test_go_presser_has_the_same_host_check_as_every_route(clock):
 
 
 def test_go_presser_refuses_plainly_when_the_address_is_unknown(clock, monkeypatch):
-    monkeypatch.setattr(server, 'home_port', lambda repo: (None, 'no home port for handmarks'))
+    monkeypatch.setattr(server, 'home_port', lambda repo: (None, 'no home port for presser'))
     status, location, body = get(clock, '/go/presser')
     assert status == 502 and location is None
-    assert b'no home port for handmarks' in body
+    assert b'no home port for presser' in body
 
 
 def test_a_failed_lookup_is_failing_in_status_and_does_not_crash(clock, monkeypatch):

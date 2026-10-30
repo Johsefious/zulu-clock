@@ -1,7 +1,6 @@
-"""Presser's home port is moving in the ports list from repo "handmarks" to repo "presser".
+"""Presser's home port moved in the ports list from repo "handmarks" to repo "presser" (move finished).
 
-Until the Ports move is done the clock asks for `presser` first and falls back to `handmarks`.
-(The fallback is temporary; this test goes with it.) Fake home_port so the live list does not matter.
+The clock asks only for `presser`; `handmarks` is never asked. Fake home_port so the live list does not matter.
 """
 import os
 import sys
@@ -28,17 +27,18 @@ def test_presser_answering_is_used_and_handmarks_is_not_asked(monkeypatch):
     assert asked == ['presser']
 
 
-def test_handmarks_answers_when_presser_is_not_listed_yet(monkeypatch):
+def test_handmarks_is_never_asked_when_presser_is_not_listed(monkeypatch):
     asked = fake(monkeypatch, {'handmarks': (9002, '')})
-    assert server.address('presser') == ('http://127.0.0.1:9002', '')
-    assert asked == ['presser', 'handmarks']
-    assert 'presser' not in server._calls
+    assert server.address('presser') == (None, 'no home port for presser')
+    assert asked == ['presser']
+    assert server._calls['presser'][server.LOOKUP][1:] == (False, 'no home port for presser')
 
 
-def test_both_failing_gives_a_plain_reason_and_a_failing_record(monkeypatch):
-    fake(monkeypatch, {})
+def test_a_failing_presser_gives_a_plain_reason_and_a_failing_record(monkeypatch):
+    asked = fake(monkeypatch, {})
     base, reason = server.address('presser')
     assert base is None and reason == 'no home port for presser'
+    assert asked == ['presser']
     assert server._calls['presser'][server.LOOKUP][1:] == (False, reason)
     assert next(s for s in server.status()['sources'] if s['name'] == 'presser')['state'] == 'failing'
 
