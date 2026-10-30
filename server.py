@@ -51,7 +51,7 @@ SOURCES = {
     'presser':    ('Presser', 'press', None),   # address: Presser's home port, found by home_port
 }
 MISSIONS_CALL = (os.environ.get('MISSIONS_CALL') or '').rstrip('/')   # empty: cmd fs's home port from the list
-REPOS = {'presser': 'handmarks', 'mission-cmd': 'cmd-fs'}   # whose home port each source lives on
+REPOS = {'presser': 'presser', 'mission-cmd': 'cmd-fs'}   # whose home port each source lives on
 PORT_FALLBACK = '/opt/homebrew/bin/port'   # a server the Dock starts may have a bare PATH
 LOOKUP = 'port home'   # the key under which a failed lookup is recorded
 STATUS_ORDER = list(SOURCES) + ['mission-cmd']
@@ -116,6 +116,10 @@ def address(name):
     """(base address, '') of a source that lives on another app's home port, or (None, reason). The outcome
     is recorded: a failed lookup shows as the source failing; a good one clears an earlier failure."""
     port, reason = home_port(REPOS[name])
+    if not port and name == 'presser':
+        # TEMPORARY: Presser's port is moving in the list from "handmarks" to "presser". This fallback stays
+        # until the Ports move is done, then goes. If both fail, the reason given is the new name's.
+        port = home_port('handmarks')[0]
     with _lock:
         if port:
             _calls.get(name, {}).pop(LOOKUP, None)
