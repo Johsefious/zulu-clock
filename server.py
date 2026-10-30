@@ -72,7 +72,7 @@ MODES = ('green', 'pink', 'blue')
 launch_mode = None            # set at start from the optional third argument
 page_seen = False             # has a clock page said hello since this start
 
-# Only the page and its script are served from the folder; nothing else in it (.git, test-runs.jsonl, docs) is reachable.
+# Only the page and its script are served from the folder; nothing else in it (.git, the test log, docs) is reachable.
 PAGE = '/zulu-clock.html'
 SCRIPT = '/zulu-clock.js'
 SERVED_FILES = {'/': PAGE, PAGE: PAGE, SCRIPT: SCRIPT}

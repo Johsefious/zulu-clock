@@ -3,3 +3,4 @@ test-runs.jsonl
 __pycache__/
 .DS_Store
 docs/handoff.md
+test-runs.old.jsonl
