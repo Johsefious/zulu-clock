@@ -6,7 +6,7 @@ Read `docs/code-map.md` first, then `docs/handoff.md` and follow its instruction
 ## Commands
 - Run the tests: `.venv/bin/python -m pytest -q`
 - Run an archived test: `.venv/bin/python -m pytest tests/archive/<file>.py -q`
-- Which tests have failed: `python3 tools/failure_history.py`
+- Which tests have failed: `testruns last --full` (see `testruns --help`)
 - Start the clock: `./launch.sh`
 - Get a port for a test server: `port take`
 

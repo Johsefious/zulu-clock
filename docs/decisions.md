@@ -77,7 +77,7 @@ reopened by a new entry that supersedes it, never by editing the old one.
 
 ## The test-run logger stays
 - **Date:** 2026-10-29
-- **Decided:** `tests/conftest.py` stays. It writes `test-runs.jsonl`, which every repo on this Mac keeps by rule; it was modelled on djitel's.
+- **Decided:** `tests/conftest.py` stays, now as one line that loads the shared testruns recorder (adoption replaced the copied recorder and `tools/failure_history.py`). The recorder writes `test-runs.jsonl`, which every repo on this Mac keeps by rule.
 - **Against:** removing it as a copy that doesn't belong here.
 - **Why:** without it no test run is recorded, and changes can't be reported by their failing and passing runs.
 - **By:** Claude, after Joe asked whether it belongs here
