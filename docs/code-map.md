@@ -9,7 +9,7 @@ zulu-clock/
 ├── server.py         local server (entry point): serves the folder, makes every outside call, answers /status
 ├── launch.sh         asks `port home zulu-clock` for its port, starts server.py on it and reloads an already-open clock tab (or opens the page); stops only an earlier Zulu Clock server
 ├── launch-pink.sh    launch.sh opening in pink mode
-├── dock.json         how a Dock icon starts, restarts and opens the clock
+├── dock.json         how a Dock icon starts, restarts and opens the clock, and what a click and Quit do to an open clock tab
 ├── icons/            the Dock icon
 ├── pytest.ini        the suite is tests/; tests/archive/ is skipped unless named
 ├── tests/
