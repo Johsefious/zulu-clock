@@ -7,15 +7,16 @@ zulu-clock/
 ├── zulu-clock.html   the page: markup and styles (entry point for the browser); sets the colour mode inline in <head>
 ├── zulu-clock.js     the page's script: clock, moon, weather, ticker, SA panel, Press, Missions
 ├── server.py         local server (entry point): serves the folder, makes every outside call, answers /status
-├── launch.sh         asks `port home zulu-clock` for its port, starts server.py on it and opens the page; stops only an earlier Zulu Clock server
+├── launch.sh         asks `port home zulu-clock` for its port, starts server.py on it and reloads an already-open clock tab (or opens the page); stops only an earlier Zulu Clock server
 ├── launch-pink.sh    launch.sh opening in pink mode
-├── dock.json         how a Dock icon starts, restarts and opens the clock; declares restart safety
+├── dock.json         how a Dock icon starts, restarts and opens the clock, and what a click and Quit do to an open clock tab; declares restart safety
 ├── icons/            the Dock icon
 ├── pytest.ini        the suite is tests/; tests/archive/ is skipped unless named
 ├── tests/
 │   ├── conftest.py   writes one line per pytest run to test-runs.jsonl
 │   └── archive/      builders' tests
-└── tools/failure_history.py   reads test-runs.jsonl back: which tests failed, first and last time
+├── tools/failure_history.py   reads test-runs.jsonl back: which tests failed, first and last time
+└── tools/open_clock.sh        launch.sh's opener: reloads an open Safari/Chrome tab matching `:PORT/zulu-clock`, else `open`
 ```
 
 ### Page sections
@@ -37,7 +38,7 @@ zulu-clock/
 | PRESS | `loadPress`, `pressRender` |
 | MISSIONS | `loadMissions`, `missionsRender` |
 | MODES | green, pink, blue; the moon click and the M key |
-| START | first paint and `launchWithRetry` for each loader |
+| START | first paint, `onTheSecond` (the once-a-second tick, lined up with the turn of each second) and `launchWithRetry` for each loader |
 
 `zulu-clock.html` holds the markup in the same order (topbar, Zulu, moon, zones, weather, Press, Missions, ticker) and all the styles.
 

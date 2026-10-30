@@ -91,6 +91,22 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **By:** Joe agreed to the proposal; Claude built it
 - **Status:** active
 
+## The launcher reloads an open clock tab
+- **Date:** 2026-10-29
+- **Decided:** `launch.sh` asks Safari, then Chrome, through `tools/open_clock.sh`, for a tab matching `:PORT/zulu-clock` (dock.json's `tab_match`) and reloads it; only a browser already running is asked, and when none has the tab, or macOS refuses the asking, it opens the page as before.
+- **Against:** always opening a new tab, which left the clock tab on the TV running the old page beside a duplicate.
+- **Why:** the clock lives in one tab, often AirPlayed to the TV, and a restart should reach that tab.
+- **By:** Joe chose the fix from a hand test; Claude built it
+- **Status:** active
+
+## The Dock leaves the TV tab alone
+- **Date:** 2026-10-29
+- **Decided:** `dock.json` sets `front_open_tab: false` and `close_tabs_on_quit: true`. A tile click with a clock tab open anywhere raises nothing (a newer commit still reloads the tab in place), and Quit on the tile closes every clock tab, the TV one included, while the server keeps running.
+- **Against:** docks' defaults, which bring the open tab's window forward on a click (pulling up the computer window that AirPlays to the TV) and leave the tabs open on Quit.
+- **Why:** the clock runs full screen on the TV in the same Chrome as Joe's working tabs, so a click must not move windows and a Quit should clear the TV.
+- **By:** Joe, through the docks session; Claude added the fields
+- **Status:** active
+
 ## Zulu Clock declares restart safety to docks
 - **Date:** 2026-10-29
 - **Decided:** Zulu Clock declares `restart_safety` in `dock.json` and answers docks' two calls, `POST /__docks/close` and `GET /__docks/restart-status`. Quit on the Dock tile now stops the server as well as closing its tabs. The answer is always `closing`, because the only state is the in-memory cache and call log, which refill.

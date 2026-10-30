@@ -9,6 +9,8 @@
   "port": 8769,
   "page": "http://localhost:{port}/zulu-clock.html",
   "tab_match": ":{port}/zulu-clock",
+  "front_open_tab": false,
+  "close_tabs_on_quit": true,
 
   "start": ["python3", "{repo}/server.py", "{port}", "{repo}"],
   "restart": null,
