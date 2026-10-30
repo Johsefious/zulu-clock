@@ -125,10 +125,6 @@ def address(name):
     """(base address, '') of a source that lives on another app's home port, or (None, reason). The outcome
     is recorded: a failed lookup shows as the source failing; a good one clears an earlier failure."""
     port, reason = home_port(REPOS[name])
-    if not port and name == 'presser':
-        # TEMPORARY: Presser's port is moving in the list from "handmarks" to "presser". This fallback stays
-        # until the Ports move is done, then goes. If both fail, the reason given is the new name's.
-        port = home_port('handmarks')[0]
     with _lock:
         if port:
             _calls.get(name, {}).pop(LOOKUP, None)
