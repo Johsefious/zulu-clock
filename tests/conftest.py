@@ -1,3 +1,4 @@
+import os as _o, shutil as _s; _t = _s.which("testruns"); _p = _o.path.join(_o.path.dirname(_o.path.realpath(_t)), "adapters", "pytest_plugin.py") if _t else ""; exec(compile(open(_p, encoding="utf-8").read(), _p, "exec")) if _o.path.exists(_p) else (None if _o.environ.get("PYTEST_XDIST_WORKER") else __import__("warnings").warn("testruns: not installed on this Mac, so this run is not recorded"))
 import os as _os
 import subprocess as _subprocess
 import sys as _sys

@@ -7,5 +7,13 @@
   "uses": {
     "docks": "1.1.0",
     "port": "*"
+  },
+  "tests": {
+    "runner": "pytest",
+    "command": "pytest",
+    "folders": [
+      "tests"
+    ],
+    "filter": ""
   }
 }
