@@ -1,7 +1,7 @@
 """Zulu Clock types no other app's port number: it asks `port home <repo>` (the ports repo's list).
 
 - launch.sh takes its own port from `port home zulu-clock` and says so in one line when that fails.
-- server.py finds Presser (handmarks) and cmd fs (cmd-fs) the same way; a failed lookup is `failing` in /status
+- server.py finds Presser (repo presser, else handmarks until the Ports move is done) and cmd fs (cmd-fs) the same way; a failed lookup is `failing` in /status
   with a plain reason, never a crash. MISSIONS_CALL still wins for cmd fs.
 - The Press link goes through GET /go/presser (302 to Presser's home address); the page holds no Presser port.
 - dock.json keeps its literal port, and it must equal what `port home zulu-clock` prints.
@@ -137,7 +137,7 @@ def test_a_failed_lookup_is_failing_in_status_and_does_not_crash(clock, monkeypa
     assert get(clock, '/source/presser')[0] == 502
     assert get(clock, '/missions')[0] == 502
     p, m = state(clock, 'presser'), state(clock, 'mission-cmd')
-    assert (p['state'], p['error']) == ('failing', 'no home port for handmarks')
+    assert (p['state'], p['error']) == ('failing', 'no home port for presser')
     assert (m['state'], m['error']) == ('failing', 'no home port for cmd-fs')
     assert get(clock, '/status')[0] == 200
 
