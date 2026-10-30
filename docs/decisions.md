@@ -1,7 +1,6 @@
 # Decisions
 
-Append-only, newest last. One entry per settled decision with Date, Decided, Against, Why, By and Status. A decision is
-reopened by a new entry that supersedes it, never by editing the old one.
+Append-only, newest last. One entry per settled decision with Date, Decided, Against, Why, By and Status. A decision is reopened by a new entry that supersedes it, never by editing the old one.
 
 ## Every status on the clock comes from a real call
 - **Date:** 2026-10-23
@@ -49,7 +48,7 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **Against:** passing cmd fs's and Presser's whole answers through; serving the folder as it was.
 - **Why:** a web page on another name could read missions (people, facilities, plans) through the server, and a bad feed item could do the same from inside the page.
 - **By:** Joe
-- **Status:** active
+- **Status:** active, except "serves only zulu-clock.html": superseded by "The page's script lives in its own file"
 
 ## The page's script lives in its own file
 - **Date:** 2026-10-29
@@ -89,7 +88,7 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **Against:** leaving 8769, 8771 and 8767 typed into four files (the dropped "Ports stay where they are" entry); reading `ports.json` directly, which would copy the lookup into this repo.
 - **Why:** the ports list is the one home of every port on this Mac; a moved port should need one edit there.
 - **By:** Joe agreed to the proposal; Claude built it
-- **Status:** active
+- **Status:** active, except dock.json keeping a typed port: superseded by "dock.json names its Ports entry, not a port number"
 
 ## The launcher reloads an open clock tab
 - **Date:** 2026-10-29
@@ -121,4 +120,12 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **Against:** staying undeclared, which made Quit print "kept" and left the server running.
 - **Why:** Joe wants every Dock app on the same docks contract.
 - **By:** Joe, through the docks session; Claude built it
+- **Status:** active
+
+## dock.json names its Ports entry, not a port number
+- **Date:** 2026-10-30
+- **Decided:** `dock.json` gives the clock's port as `"port": {"ports": "zulu-clock"}`; docks asks `port home zulu-clock` for the number. The suite (`tests/test_dock_json.py`) checks the number docks would use against `launch.sh`.
+- **Against:** keeping the number typed in `dock.json` and checked by the suite (the earlier "Ports come from the ports list" entry).
+- **Why:** the ports list is the one home of every port; with the number typed, a moved port needed a second edit in `dock.json`.
+- **By:** the Ports session asked; Claude built it
 - **Status:** active

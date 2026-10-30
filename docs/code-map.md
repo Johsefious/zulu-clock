@@ -14,6 +14,8 @@ zulu-clock/
 ├── pytest.ini        the suite is tests/; tests/archive/ is skipped unless named
 ├── tests/
 │   ├── conftest.py   one line that loads the testruns recorder (`testruns hook` wrote it)
+│   ├── test_server_leaks.py  suite: who the server answers, which files and fields it sends
+│   ├── test_dock_json.py     suite: dock.json agrees with launch.sh and server.py
 │   └── archive/      builders' tests
 ├── app.json          what the repo is (family none, app, not shipped, uses docks and port) and the `tests` key testruns owns
 └── tools/open_clock.sh        launch.sh's opener: waits up to 6 s for `/__clock/seen`, then `open` only if no clock page checked in; never scripts the browser
@@ -44,32 +46,17 @@ zulu-clock/
 
 ## Data flow
 
-- **Outside sources.** The page never calls an outside site. It asks `server.py` at `/source/<name>?<query>`
-  (`zulu-clock.js:src`), and `server.py` calls the fixed address for that name (`server.py:SOURCES`, the one list of
-  every outside source). Answers are cached 120 s in memory (`server.py:call`).
-- **Status.** `server.py:call` records how each distinct call went; `/status` reports it per source
-  (`server.py:status`). The page prints every status word from `/status` (`zulu-clock.js:renderStatus`).
-- **Weather and moon.** Open-Meteo and Aviation Weather through `/source/`; the moon is computed in the page
-  (`getMoonPhaseData`), no source.
-- **Clocks and Christmas.** `clockFace` picks what the clock block shows: Zulu big (`zuluTime`) with `LOCAL` and this
-  device's time (`localClock`) small under it in green and blue, the two swapped in pink. In pink mode the SA panel shows the days until Christmas (`christmasItem`), computed in the page, no source.
+- **Outside sources.** The page never calls an outside site. It asks `server.py` at `/source/<name>?<query>` (`zulu-clock.js:src`), and `server.py` calls the fixed address for that name (`server.py:SOURCES`, the one list of every outside source). Answers are cached 120 s in memory (`server.py:call`).
+- **Status.** `server.py:call` records how each distinct call went; `/status` reports it per source (`server.py:status`). The page prints every status word from `/status` (`zulu-clock.js:renderStatus`).
+- **Weather and moon.** Open-Meteo and Aviation Weather through `/source/`; the moon is computed in the page (`getMoonPhaseData`), no source.
+- **Clocks and Christmas.** `clockFace` picks what the clock block shows: Zulu big (`zuluTime`) with `LOCAL` and this device's time (`localClock`) small under it in green and blue, the two swapped in pink. In pink mode the SA panel shows the days until Christmas (`christmasItem`), computed in the page, no source.
 - **Headlines.** Google News World, US and CA through `/source/` (`loadHeadlines`).
-- **SA panel.** USGS, NWS, NHC, NASA EONET, NIFC, WHO and NOAA SWPC through `/source/` (`saFetch*`, merged by
-  `saMerge`). Any alert seen in the last 48 hours is kept in the page's localStorage (`saLoadStored`). **This is a write
-  that does not go through an endpoint.**
-- **Feed text.** Text from outside feeds goes into `innerHTML` only through `esc` (`zulu-clock.js:esc`); a feed link is
-  kept only when it is http or https (`httpOnly`). Tests: `tests/archive/test_feed_text_is_text.py`, `test_server_leaks.py`.
-- **Mode.** The last colour mode picked is kept in the page's localStorage (`nextMode`). **A write that does not go
-  through an endpoint.**
-- **Other apps' ports.** Presser's and cmd fs's addresses come from `port home presser` and `port home cmd-fs` on each
-  call (`server.py:home_port`, `address`); a failed lookup shows as that source failing in `/status`. No port is typed in
-  the code; `dock.json` names the clock's Ports entry (`"port": {"ports": "zulu-clock"}`), docks asks `port home`
-  for the number, and the suite checks the fills against it.
-- **Press.** `server.py` reads the Presser app's summary route (the `presser` source); the page draws the cards
-  (`loadPress`, `pressRender`). Clicking Press opens `/go/presser`, which sends the browser on to Presser. Nothing is stored.
-- **Missions.** `GET /missions` makes `server.py` call cmd fs's `mmGetMissions` at `POST <MISSIONS_CALL>/call/mmGetMissions`
-  (`server.py:send_missions`), never the sheet. A refusal that arrives as an HTTP 200 is recorded as a failure. The page
-  draws them (`loadMissions`, `missionsRender`). Nothing is stored.
+- **SA panel.** USGS, NWS, NHC, NASA EONET, NIFC, WHO and NOAA SWPC through `/source/` (`saFetch*`, merged by `saMerge`). Any alert seen in the last 48 hours is kept in the page's localStorage (`saLoadStored`). **This is a write that does not go through an endpoint.**
+- **Feed text.** Text from outside feeds goes into `innerHTML` only through `esc` (`zulu-clock.js:esc`); a feed link is kept only when it is http or https (`httpOnly`). Tests: `tests/archive/test_feed_text_is_text.py`, `test_server_leaks.py`.
+- **Mode.** The last colour mode picked is kept in the page's localStorage (`nextMode`). **A write that does not go through an endpoint.**
+- **Other apps' ports.** Presser's and cmd fs's addresses come from `port home presser` and `port home cmd-fs` on each call (`server.py:home_port`, `address`); a failed lookup shows as that source failing in `/status`. No port is typed in the code; `dock.json` names the clock's Ports entry (`"port": {"ports": "zulu-clock"}`), docks asks `port home` for the number, and the suite checks the fills against it.
+- **Press.** `server.py` reads the Presser app's summary route (the `presser` source); the page draws the cards (`loadPress`, `pressRender`). Clicking Press opens `/go/presser`, which sends the browser on to Presser. Nothing is stored.
+- **Missions.** `GET /missions` makes `server.py` call cmd fs's `mmGetMissions` at `POST <MISSIONS_CALL>/call/mmGetMissions` (`server.py:send_missions`), never the sheet. A refusal that arrives as an HTTP 200 is recorded as a failure. The page draws them (`loadMissions`, `missionsRender`). Nothing is stored.
 - **In memory only.** The 120 s cache and the 24 h call log in `server.py`; each write drops what is past its time (`server.py:record`, `call`), and both refill from the next calls.
 
 ## Endpoints
@@ -80,21 +67,18 @@ One change endpoint, for docks. Nothing the clock reads is changed through the s
 |---|---|---|---|---|
 | `POST /__docks/close` | Answers `{"answer": "closing", "reason", "as_of"}` (always: the cache and call log only refill), then stops the server so the process exits | `for` = restart \| quit | not this server's Host (403); not sent as `application/json`, so a web page cannot post it without asking first (415); a body that is missing, not JSON or without a known `for` (400); any other POST path (404) | `server.py:Handler.do_POST` |
 
-Every request must name this server as its Host (`127.0.0.1` or `localhost`), else 403 (`server.py:OWN_HOSTS`), so a
-web page on another name cannot reach cmd fs or Presser through it. Only `/`, `/zulu-clock.html` and `/zulu-clock.js` are served from the
-folder (`server.py:SERVED_FILES`); any other file is 404.
+Every request must name this server as its Host (`127.0.0.1` or `localhost`), else 403 (`server.py:OWN_HOSTS`), so a web page on another name cannot reach cmd fs or Presser through it. Only `/`, `/zulu-clock.html` and `/zulu-clock.js` are served from the folder (`server.py:SERVED_FILES`); any other file is 404.
 
 Reads, all GET:
 
 - `GET /status`: per source, its state (`answering`, `partial`, `failing`, `offline`, `not called`), the latest error and how many calls answered.
-- `GET /source/<name>?<query>`: the call to that source's fixed address, answered as it came back (404 for a name not in `SOURCES`, 502 when the source did not answer). `presser` is cut to the
-  fields the press cards draw (`server.py:trim_summary`).
+- `GET /source/<name>?<query>`: the call to that source's fixed address, answered as it came back (404 for a name not in `SOURCES`, 502 when the source did not answer). `presser` is cut to the fields the press cards draw (`server.py:trim_summary`).
 - `GET /__docks/restart-status`: `{"clear": true, "reason", "as_of"}`, built fresh, no outside calls (`server.py:restart_status`). Docks reads it in `docks check`.
 - `GET /go/presser`: 302 to Presser's home address, or 502 with the reason when the ports list has none.
 - `GET /missions`: cmd fs's missions, cut to the fields the mission cards draw, members as first names (`server.py:trim_mission`).
 - `GET /__clock/hello`: `{"boot", "mode"}`, this server run's id and the launch mode (or null); notes in memory that a clock page checked in. The page calls it every 2 s.
 - `GET /__clock/seen`: `{"seen", "as_of"}`, whether a clock page has said hello since this start. `tools/open_clock.sh` reads it.
-- Any other path: the file in this folder.
+- Any other path: 404 (only the files in `server.py:SERVED_FILES` are served).
 
 ## Tests
 
