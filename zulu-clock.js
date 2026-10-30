@@ -730,8 +730,22 @@
   })();
 
   // ─────────────────────────────────────────────────────────────
-  //  LIVE NEWS — dual-proxy fetch with full error surfacing
+  //  LIVE NEWS — Google News World, US and CA through server.py's /source/, one fetch per feed
   // ─────────────────────────────────────────────────────────────
+  // What can hold the headlines up, in the order a feed meets it. Each one fails that feed alone; the others still show.
+  // - No server: the page was opened as a file, or server.py is not running, so the fetch itself fails.
+  // - Host: the page was reached by a name other than 127.0.0.1 or localhost, so the server answers 403.
+  // - Source name: a feed's `source` is not in server.py's SOURCES, so the server answers 404.
+  // - Google News: no answer within server.py's TIMEOUT (10 s), a refused connection or an HTTP error, so the
+  //   server answers 502 with the reason. /status names that feed failing.
+  // - Page time limit: fetchT gives up after 15 s. The server's 10 s limit normally answers first.
+  // - Any other non-ok answer: fetchT throws `HTTP <status>`.
+  // - A reply that is not RSS (a consent or error page sent as 200): `XML parse failed`, or `no <item> elements in feed`.
+  //   /status still says answering, because the call got a reply; the reason is only in the console.
+  // - Items with no title are dropped. A link that is not http or https is blanked, but its headline stays.
+  // server.py caches only good answers (120 s), so a failed feed is called again on the next try. When every feed fails,
+  // the last headlines stay up, the count reads NO HEADLINES, and launchWithRetry tries again after 6, 18, 45 and
+  // 120 s before settling to every NEWS_REFRESH_MS. Each failed feed's reason goes to the console.
 
   // Shared XML parser for raw RSS responses
   // A feed's link is kept only when it is a web address, never javascript: or data:.
