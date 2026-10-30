@@ -97,6 +97,14 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **Against:** always opening a new tab, which left the clock tab on the TV running the old page beside a duplicate.
 - **Why:** the clock lives in one tab, often AirPlayed to the TV, and a restart should reach that tab.
 - **By:** Joe chose the fix from a hand test; Claude built it
+- **Status:** replaced by "The browser is never scripted" below
+
+## The browser is never scripted
+- **Date:** 2026-10-29
+- **Decided:** the browser is never scripted. The page checks in with the server every 2 s and reloads when the server restarts; the launcher opens a tab only when no page checks in within 6 s.
+- **Against:** asking Safari and Chrome to reload the tab, the decision above.
+- **Why:** asking Chrome needs macOS Automation permission for whatever app runs the launcher, which would give that app control of all of Chrome.
+- **By:** Joe ruled out browser control after a hand test; Claude built the replacement
 - **Status:** active
 
 ## The Dock leaves the TV tab alone
