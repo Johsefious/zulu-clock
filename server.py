@@ -275,6 +275,9 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_error(403, 'not the clock')
         if path != '/__docks/close':
             return self.send_error(404)
+        # A web page can post text/plain without asking first; only docks sends JSON
+        if self.headers.get('Content-Type', '').partition(';')[0].strip() != 'application/json':
+            return self.send_error(415, 'The close call must be sent as application/json.')
         try:
             length = int(self.headers.get('Content-Length') or 0)
             asked = json.loads(self.rfile.read(min(length, 4096)))
