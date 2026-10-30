@@ -107,3 +107,10 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **By:** Joe, through the docks session; Claude added the fields
 - **Status:** active
 
+## Zulu Clock declares restart safety to docks
+- **Date:** 2026-10-29
+- **Decided:** Zulu Clock declares `restart_safety` in `dock.json` and answers docks' two calls, `POST /__docks/close` and `GET /__docks/restart-status`. Quit on the Dock tile now stops the server as well as closing its tabs. The answer is always `closing`, because the only state is the in-memory cache and call log, which refill.
+- **Against:** staying undeclared, which made Quit print "kept" and left the server running.
+- **Why:** Joe wants every Dock app on the same docks contract.
+- **By:** Joe, through the docks session; Claude built it
+- **Status:** active

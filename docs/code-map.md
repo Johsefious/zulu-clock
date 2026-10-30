@@ -9,7 +9,7 @@ zulu-clock/
 ├── server.py         local server (entry point): serves the folder, makes every outside call, answers /status
 ├── launch.sh         asks `port home zulu-clock` for its port, starts server.py on it and reloads an already-open clock tab (or opens the page); stops only an earlier Zulu Clock server
 ├── launch-pink.sh    launch.sh opening in pink mode
-├── dock.json         how a Dock icon starts, restarts and opens the clock, and what a click and Quit do to an open clock tab
+├── dock.json         how a Dock icon starts, restarts and opens the clock, and what a click and Quit do to an open clock tab; declares restart safety
 ├── icons/            the Dock icon
 ├── pytest.ini        the suite is tests/; tests/archive/ is skipped unless named
 ├── tests/
@@ -73,15 +73,22 @@ zulu-clock/
 
 ## Endpoints
 
-None, read-only. Nothing the clock reads is changed through it. Every route is a GET:
+One change endpoint, for docks. Nothing the clock reads is changed through the server; every other route is a read.
+
+| Endpoint | Does | Variant parameter | Refuses when | Code |
+|---|---|---|---|---|
+| `POST /__docks/close` | Answers `{"answer": "closing", "reason", "as_of"}` (always: the cache and call log only refill), then stops the server so the process exits | `for` = restart \| quit | not this server's Host (403); not sent as `application/json`, so a web page cannot post it without asking first (415); a body that is missing, not JSON or without a known `for` (400); any other POST path (404) | `server.py:Handler.do_POST` |
 
 Every request must name this server as its Host (`127.0.0.1` or `localhost`), else 403 (`server.py:OWN_HOSTS`), so a
 web page on another name cannot reach cmd fs or Presser through it. Only `/`, `/zulu-clock.html` and `/zulu-clock.js` are served from the
 folder (`server.py:SERVED_FILES`); any other file is 404.
 
+Reads, all GET:
+
 - `GET /status`: per source, its state (`answering`, `partial`, `failing`, `offline`, `not called`), the latest error and how many calls answered.
 - `GET /source/<name>?<query>`: the call to that source's fixed address, answered as it came back (404 for a name not in `SOURCES`, 502 when the source did not answer). `presser` is cut to the
   fields the press cards draw (`server.py:trim_summary`).
+- `GET /__docks/restart-status`: `{"clear": true, "reason", "as_of"}`, built fresh, no outside calls (`server.py:restart_status`). Docks reads it in `docks check`.
 - `GET /go/presser`: 302 to Presser's home address, or 502 with the reason when the ports list has none.
 - `GET /missions`: cmd fs's missions, cut to the fields the mission cards draw, members as first names (`server.py:trim_mission`).
 - Any other path: the file in this folder.

@@ -21,6 +21,7 @@
   "stale_if_changed": ["server.py"],
   "on_stale": "restart",
   "restart_loses": "the in-memory feed cache, which refills on the next calls",
+  "restart_safety": true,
   "reload_when": "head",
 
   "env": { "MISSIONS_CALL": null },
