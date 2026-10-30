@@ -1,36 +1,60 @@
-"""open_clock.sh says why it could not reuse a tab when a browser refuses Apple events (-1743)."""
+"""open_clock.sh PORT URL opens a tab only when no clock page has checked in with the server.
+
+It asks GET /__clock/seen (curl) for up to CLOCK_SEEN_WAIT seconds (default 6). {"seen": true}: exit 0, `open` not called.
+Never seen in that time: `open URL`. Tests put fake `curl` and `open` on PATH. No browser scripting anywhere.
+"""
 import os
 import subprocess
+import time
 
-SCRIPT = os.path.join(os.path.dirname(__file__), '..', '..', 'tools', 'open_clock.sh')
-URL = 'http://127.0.0.1:8800/zulu-clock'
-DENIED = 'execution error: Not authorized to send Apple events to {}. (-1743)'
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SCRIPT = os.path.join(ROOT, 'tools', 'open_clock.sh')
+URL = 'http://localhost:8769/zulu-clock.html?mode=pink'
 
 
-def _run(tmp_path, osascript_body):
+def run(tmp_path, curl_body, wait='1'):
     bin_dir = tmp_path / 'bin'
     bin_dir.mkdir()
-    log = tmp_path / 'open.log'
-    (bin_dir / 'osascript').write_text('#!/bin/bash\n' + osascript_body + '\n')
-    (bin_dir / 'open').write_text('#!/bin/bash\necho "$1" >> "%s"\n' % log)
+    log = tmp_path / 'calls.log'
+    (bin_dir / 'curl').write_text('#!/bin/bash\necho "curl $*" >> "%s"\n%s\n' % (log, curl_body))
+    (bin_dir / 'open').write_text('#!/bin/bash\necho "open $*" >> "%s"\n' % log)
     for f in bin_dir.iterdir():
         f.chmod(0o755)
-    env = dict(os.environ, PATH='%s:%s' % (bin_dir, os.environ['PATH']))
-    r = subprocess.run(['bash', SCRIPT, '8800', URL, 'KEEP'], env=env, capture_output=True, text=True)
-    return r, (log.read_text().split() if log.exists() else [])
+    env = dict(os.environ, PATH='%s:%s' % (bin_dir, os.environ['PATH']), CLOCK_SEEN_WAIT=wait)
+    t = time.time()
+    r = subprocess.run(['bash', SCRIPT, '8769', URL], capture_output=True, text=True, env=env)
+    calls = log.read_text().splitlines() if log.exists() else []
+    return r, calls, time.time() - t
 
 
-def test_denied_browser_is_named_and_open_still_runs(tmp_path):
-    # the script text names the app; fake keys off it
-    body = ('case "$*" in *\'application "Google Chrome"\'*) echo "%s" >&2;; '
-            '*) echo "%s" >&2;; esac; exit 1' % (DENIED.format('Google Chrome'), DENIED.format('Safari')))
-    r, opened = _run(tmp_path, body)
-    assert 'Google Chrome' in r.stderr and 'Safari' in r.stderr
-    assert 'Opening a new tab' in r.stderr
-    assert opened == [URL]
+def test_a_page_that_checked_in_means_nothing_is_opened(tmp_path):
+    r, calls, took = run(tmp_path, 'echo \'{"seen": true, "as_of": "x"}\'')
+    assert r.returncode == 0 and r.stderr == ''
+    assert not [c for c in calls if c.startswith('open ')], calls
+    assert 'http://127.0.0.1:8769/__clock/seen' in calls[0] and 'curl -s' in calls[0], calls
+    assert took < 1
 
 
-def test_reloaded_tab_is_quiet_and_open_not_called(tmp_path):
-    r, opened = _run(tmp_path, 'echo reloaded')
-    assert r.stderr == ''
-    assert opened == []
+def test_a_page_that_checks_in_late_is_still_waited_for(tmp_path):
+    # the fake says false the first two times, then true
+    body = 'n=$(grep -c "^curl" "%s"); if [ "$n" -ge 3 ]; then echo \'{"seen": true}\'; else echo \'{"seen": false}\'; fi' % (
+        tmp_path / 'calls.log')
+    r, calls, _ = run(tmp_path, body, wait='5')
+    assert not [c for c in calls if c.startswith('open ')], calls
+
+
+def test_no_page_in_the_time_opens_the_url_once(tmp_path):
+    r, calls, took = run(tmp_path, 'echo \'{"seen": false}\'')
+    assert r.returncode == 0 and r.stderr == ''
+    assert calls.count('open ' + URL) == 1, calls
+    assert 1 <= took < 4
+
+
+def test_a_server_that_does_not_answer_opens_the_url(tmp_path):
+    r, calls, _ = run(tmp_path, 'exit 7')
+    assert calls.count('open ' + URL) == 1, calls
+
+
+def test_no_browser_scripting_in_the_opener():
+    body = open(SCRIPT).read().lower()
+    assert 'osascript' not in body and 'applescript' not in body and 'tell application' not in body
