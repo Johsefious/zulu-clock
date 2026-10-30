@@ -63,7 +63,8 @@ zulu-clock/
   through an endpoint.**
 - **Other apps' ports.** Presser's and cmd fs's addresses come from `port home presser` and `port home cmd-fs` on each
   call (`server.py:home_port`, `address`); a failed lookup shows as that source failing in `/status`. No port is typed in
-  the code; `dock.json` holds the clock's own, and the suite checks it against the list.
+  the code; `dock.json` names the clock's Ports entry (`"port": {"ports": "zulu-clock"}`), docks asks `port home`
+  for the number, and the suite checks the fills against it.
 - **Press.** `server.py` reads the Presser app's summary route (the `presser` source); the page draws the cards
   (`loadPress`, `pressRender`). Clicking Press opens `/go/presser`, which sends the browser on to Presser. Nothing is stored.
 - **Missions.** `GET /missions` makes `server.py` call cmd fs's `mmGetMissions` at `POST <MISSIONS_CALL>/call/mmGetMissions`
