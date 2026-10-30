@@ -98,3 +98,12 @@ reopened by a new entry that supersedes it, never by editing the old one.
 - **Why:** the clock lives in one tab, often AirPlayed to the TV, and a restart should reach that tab.
 - **By:** Joe chose the fix from a hand test; Claude built it
 - **Status:** active
+
+## The Dock leaves the TV tab alone
+- **Date:** 2026-10-29
+- **Decided:** `dock.json` sets `front_open_tab: false` and `close_tabs_on_quit: true`. A tile click with a clock tab open anywhere raises nothing (a newer commit still reloads the tab in place), and Quit on the tile closes every clock tab, the TV one included, while the server keeps running.
+- **Against:** docks' defaults, which bring the open tab's window forward on a click (pulling up the computer window that AirPlays to the TV) and leave the tabs open on Quit.
+- **Why:** the clock runs full screen on the TV in the same Chrome as Joe's working tabs, so a click must not move windows and a Quit should clear the TV.
+- **By:** Joe, through the docks session; Claude added the fields
+- **Status:** active
+
