@@ -214,11 +214,22 @@ def status():
     return {'checked_at': now_iso(), 'sources': out}
 
 
+CLOSE_REASON = 'Nothing needs saving; a restart loses only the feed cache and call log, which refill on the next calls.'
+
+
+def restart_status():
+    """What docks asks before a restart: built fresh, no outside calls."""
+    return {'clear': True, 'reason': 'A restart loses only the feed cache, which refills on the next calls.',
+            'as_of': now_iso()}
+
+
 class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path, _, query = self.path.partition('?')
         if self.headers.get('Host', '').partition(':')[0] not in OWN_HOSTS:
             return self.send_error(403, 'not the clock')
+        if path == '/__docks/restart-status':
+            return self.send_body('application/json', json.dumps(restart_status()).encode())
         if path == '/status':
             return self.send_body('application/json', json.dumps(status()).encode())
         if path == '/missions':
@@ -257,6 +268,28 @@ class Handler(SimpleHTTPRequestHandler):
             except (ValueError, KeyError, TypeError, AttributeError):
                 return self.send_error(502, 'Presser did not send a summary')
         self.send_body(ctype, body)
+
+    def do_POST(self):
+        path = self.path.partition('?')[0]
+        if self.headers.get('Host', '').partition(':')[0] not in OWN_HOSTS:
+            return self.send_error(403, 'not the clock')
+        if path != '/__docks/close':
+            return self.send_error(404)
+        try:
+            length = int(self.headers.get('Content-Length') or 0)
+            asked = json.loads(self.rfile.read(min(length, 4096)))
+            why = asked['for']
+        except (ValueError, KeyError, TypeError):
+            why = None
+        if why not in ('restart', 'quit'):
+            return self.send_error(400, 'The body must be JSON like {"for": "restart"} or {"for": "quit"}.')
+        # Nothing here needs saving: the cache and call log only refill. Answer, then stop.
+        self.close_connection = True
+        self.send_body('application/json', json.dumps({'answer': 'closing', 'reason': CLOSE_REASON,
+                                                       'as_of': now_iso()}).encode())
+        self.wfile.flush()
+        # shutdown() waits for serve_forever, which is on another thread, so it must not run on this one.
+        threading.Thread(target=self.server.shutdown).start()
 
     def send_missions(self):
         base = MISSIONS_CALL
@@ -302,4 +335,6 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     port, directory = int(sys.argv[1]), sys.argv[2]
-    ThreadingHTTPServer(('127.0.0.1', port), partial(Handler, directory=directory)).serve_forever()
+    httpd = ThreadingHTTPServer(('127.0.0.1', port), partial(Handler, directory=directory))
+    httpd.serve_forever()   # returns after POST /__docks/close; the process then ends
+    httpd.server_close()
