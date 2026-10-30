@@ -61,7 +61,7 @@ zulu-clock/
   kept only when it is http or https (`httpOnly`). Tests: `tests/archive/test_feed_text_is_text.py`, `test_server_leaks.py`.
 - **Mode.** The last colour mode picked is kept in the page's localStorage (`nextMode`). **A write that does not go
   through an endpoint.**
-- **Other apps' ports.** Presser's and cmd fs's addresses come from `port home handmarks` and `port home cmd-fs` on each
+- **Other apps' ports.** Presser's and cmd fs's addresses come from `port home presser` and `port home cmd-fs` on each
   call (`server.py:home_port`, `address`); a failed lookup shows as that source failing in `/status`. No port is typed in
   the code; `dock.json` holds the clock's own, and the suite checks it against the list.
 - **Press.** `server.py` reads the Presser app's summary route (the `presser` source); the page draws the cards
