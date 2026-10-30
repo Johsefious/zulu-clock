@@ -3,7 +3,7 @@
 # Usage: open_clock.sh PORT URL KEEP|NEW
 #   KEEP reloads the open tab on its own URL (so its ?mode= stays); NEW loads URL in it (a mode was passed).
 # Only Safari and Google Chrome that are already running are asked (never launched to check).
-# Any osascript failure (e.g. no Automation permission) falls through to a plain `open`.
+# Any osascript failure falls through to a plain `open`; a refusal (-1743, no Automation permission) says so on stderr first.
 PORT="$1"; URL="$2"; HOW="${3:-KEEP}"
 MATCH=":$PORT/zulu-clock"   # same pattern as tab_match in dock.json
 [ "$HOW" = "NEW" ] && TARGET="$URL" || TARGET=""
@@ -46,9 +46,14 @@ end tell
 return ""
 end run'
 
-for SCRIPT in "$SAFARI" "$CHROME"; do
-    if [ "$(osascript -e "$SCRIPT" "$MATCH" "$TARGET" 2>/dev/null)" = "reloaded" ]; then
-        exit 0
-    fi
+for APP in Safari "Google Chrome"; do
+    [ "$APP" = Safari ] && SCRIPT="$SAFARI" || SCRIPT="$CHROME"
+    ERR="$(mktemp)"
+    OUT="$(osascript -e "$SCRIPT" "$MATCH" "$TARGET" 2>"$ERR")"
+    # -1743: this app may not control the browser, so we cannot tell if a tab exists
+    grep -q -- '-1743' "$ERR" && DENIED="$DENIED${DENIED:+, }$APP"
+    rm -f "$ERR"
+    [ "$OUT" = "reloaded" ] && exit 0
 done
+[ -n "$DENIED" ] && echo "  Could not reuse the open clock tab: this app may not control $DENIED (System Settings > Privacy & Security > Automation). Opening a new tab." >&2
 open "$URL"
