@@ -1,0 +1,11 @@
+{
+  "app_json": 1,
+  "name": "zulu-clock",
+  "family": "none",
+  "kind": "app",
+  "ships": false,
+  "uses": {
+    "docks": "1.1.0",
+    "port": "*"
+  }
+}
