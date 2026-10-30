@@ -6,7 +6,7 @@
   "icon": "icons/zulu-clock.svg",
   "icon_px": 824,
 
-  "port": 8769,
+  "port": {"ports": "zulu-clock"},
   "page": "http://localhost:{port}/zulu-clock.html",
   "tab_match": ":{port}/zulu-clock",
   "front_open_tab": false,

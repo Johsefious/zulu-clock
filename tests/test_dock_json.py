@@ -22,8 +22,15 @@ def dock():
     return json.loads(read('dock.json'))
 
 
+def port_number(d):
+    """The number docks uses: a typed one, or what `port home <repo>` prints for {"ports": "<repo>"}."""
+    if isinstance(d['port'], dict):
+        return int(subprocess.run(['port', 'home', d['port']['ports']], capture_output=True, text=True).stdout)
+    return d['port']
+
+
 def fill(text, d):
-    return text.replace('{port}', str(d['port'])).replace('{repo}', ROOT)
+    return text.replace('{port}', str(port_number(d))).replace('{repo}', ROOT)
 
 
 def launch_sh(var):
@@ -48,7 +55,8 @@ def test_port_page_and_tab_match_agree_with_launch_sh():
     d = dock()
     assert 'port home zulu-clock' in launch_sh('PORT')
     port = subprocess.run(['port', 'home', 'zulu-clock'], capture_output=True, text=True).stdout.strip()
-    assert d['port'] == int(port)
+    assert d['port'] in ({'ports': 'zulu-clock'}, int(port))
+    assert port_number(d) == int(port)
     assert fill(d['page'], d) == launch_sh('URL').replace('$PORT', port)
     assert fill(d['tab_match'], d) in fill(d['page'], d)
 
@@ -56,7 +64,7 @@ def test_port_page_and_tab_match_agree_with_launch_sh():
 def test_a_server_docks_starts_is_one_launch_sh_and_docks_both_call_their_own():
     d = dock()
     command_line = ' '.join(fill(w, d) for w in d['start'])
-    own = launch_sh('OWN_CMD').replace('$SCRIPT_DIR', ROOT).replace('$PORT', str(d['port']))
+    own = launch_sh('OWN_CMD').replace('$SCRIPT_DIR', ROOT).replace('$PORT', str(port_number(d)))
     assert own in command_line
     assert fill(d['ours']['command'], d) in command_line
 

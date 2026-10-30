@@ -4,7 +4,7 @@
 - server.py finds Presser (repo presser) and cmd fs (cmd-fs) the same way; a failed lookup is `failing` in /status
   with a plain reason, never a crash. MISSIONS_CALL still wins for cmd fs.
 - The Press link goes through GET /go/presser (302 to Presser's home address); the page holds no Presser port.
-- dock.json keeps its literal port, and it must equal what `port home zulu-clock` prints.
+- dock.json names its Ports entry, {"ports": "zulu-clock"}, and docks asks `port home zulu-clock` for the number.
 """
 import http.client
 import json
@@ -43,8 +43,9 @@ def test_no_other_apps_port_is_typed_into_the_code():
     assert 'PRESS_URL' not in text('zulu-clock.js')
 
 
-def test_dock_json_keeps_the_home_port_the_list_gives_the_clock():
-    assert json.loads(text('dock.json'))['port'] == int(home('zulu-clock'))
+def test_dock_json_takes_the_home_port_the_list_gives_the_clock():
+    assert json.loads(text('dock.json'))['port'] == {'ports': 'zulu-clock'}
+    assert home('zulu-clock').isdigit()
 
 
 # ---- launch.sh ----
