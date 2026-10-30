@@ -93,3 +93,14 @@ def test_any_other_post_is_404(srv):
     p, port = srv
     assert ask(port, 'POST', '/status', '{"for": "quit"}')[0] == 404
     assert p.poll() is None
+
+
+def test_a_close_that_is_not_json_is_refused_and_the_clock_keeps_running(srv):
+    # A web page can send a form post as text/plain without asking; only docks sends application/json.
+    p, port = srv
+    c = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+    c.request('POST', '/__docks/close', body='{"for": "quit"}', headers={'Content-Type': 'text/plain'})
+    r = c.getresponse()
+    assert r.status == 415 and b'application/json' in r.read()
+    time.sleep(1)
+    assert p.poll() is None
