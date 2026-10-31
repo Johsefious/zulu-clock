@@ -12,9 +12,12 @@
       if (m === 'pink' || m === 'blue') document.documentElement.dataset.mode = m;
     })();
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
   <style>
+    /* Both fonts are served by server.py from fonts/ (latin only; anything else falls back to the next family). */
+    @font-face { font-family: 'Share Tech Mono'; font-style: normal; font-weight: 400; font-display: swap;
+      src: url(/fonts/share-tech-mono-latin.woff2) format('woff2'); }
+    @font-face { font-family: 'VT323'; font-style: normal; font-weight: 400; font-display: swap;
+      src: url(/fonts/vt323-latin.woff2) format('woff2'); }
     /* ── Design tokens — adjusted by media queries below ── */
     :root {
       --green:       #00ff41;

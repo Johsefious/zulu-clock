@@ -145,3 +145,11 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 - **Why:** the ports list is the one home of every port; with the number typed, a moved port needed a second edit in `dock.json`.
 - **By:** the Ports session asked; Claude built it
 - **Status:** active
+
+## Fonts are served from the clock's own server
+- **Date:** 2026-10-31
+- **Decided:** Share Tech Mono and VT323 (latin subsets, `.woff2`) live in `fonts/` and `server.py` serves exactly those two files; `zulu-clock.html` declares them with `@font-face`. The page no longer loads anything from Google.
+- **Against:** keeping the Google Fonts `<link>` tags (since v1) and recording an exception; the browser fetched them itself, so `/status` could not see them.
+- **Why:** every outside call should go through `server.py` and show in `/status`; the clock also keeps its look offline. Characters outside latin fall back to the next family in the font stack.
+- **By:** Joe asked; Claude built it
+- **Status:** active

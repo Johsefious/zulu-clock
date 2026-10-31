@@ -6,17 +6,18 @@
 zulu-clock/
 ├── zulu-clock.html   the page: markup and styles (entry point for the browser); sets the colour mode inline in <head>
 ├── zulu-clock.js     the page's script: clock, moon, weather, ticker, SA panel, Press, Missions
-├── server.py         local server (entry point): serves only the page and its script (not the rest of the folder), makes every outside call, answers /status; started as `server.py PORT DIRECTORY [green|pink|blue]`
+├── server.py         local server (entry point): serves only the page, its script and its two fonts (not the rest of the folder), makes every outside call, answers /status; started as `server.py PORT DIRECTORY [green|pink|blue]`
 ├── launch.sh         entry point for a person: asks `port home zulu-clock` for its port; if the port is held, stops the holder only when it is this folder's server.py or the plain `http.server` earlier versions started, else says so and exits; starts server.py on the port (with the mode, if one was given) and runs tools/open_clock.sh; stops the server on Ctrl+C; without python3 it opens zulu-clock.html directly
 ├── launch-pink.sh    launch.sh opening in pink mode
 ├── dock.json         the Dock icon's contract with docks: the Ports entry (`zulu-clock`) for the port, the page address and tab match, the `server.py` start command, `/status` as the health path, a restart when `server.py` changes, what a click and Quit do to an open clock tab, and restart safety; passes `MISSIONS_CALL` through
 ├── icons/            the Dock icon (zulu-clock.svg)
+├── fonts/            Share Tech Mono and VT323, latin subsets (.woff2), declared by `@font-face` in zulu-clock.html and served by server.py
 ├── pytest.ini        the suite is tests/; tests/archive/ is skipped unless named
 ├── tests/
 │   ├── conftest.py   one line that loads the testruns recorder (`testruns hook` wrote it)
 │   ├── test_server_leaks.py  suite: who the server answers, which files and fields it sends
 │   ├── test_dock_json.py     suite: dock.json agrees with launch.sh and server.py
-│   └── archive/      builders' tests
+│   └── archive/      builders' tests (fonts: `test_fonts_served_locally.py`)
 ├── app.json          what the repo is (family none, app, not shipped, uses docks and port) and the `tests` key testruns owns
 ├── tools/open_clock.sh   launch.sh's opener: waits up to 6 s (`CLOCK_SEEN_WAIT`) for `/__clock/seen`, then `open` only if no clock page checked in; never scripts the browser
 ├── docs/             code-map.md (this file), decisions.md, and handoff.md (git-ignored)
@@ -49,7 +50,7 @@ zulu-clock/
 
 ## Data flow
 
-- **Outside sources.** The page's script never calls an outside site; the only outside load is the two Google Fonts in `zulu-clock.html`'s `<link>` tags, which the browser fetches itself (not through `server.py`, so `/status` does not cover it). The script asks `server.py` at `/source/<name>?<query>` (`zulu-clock.js:src`), and `server.py` calls the fixed address for that name (`server.py:SOURCES`, the one list of every outside source). Answers to GET calls are cached 120 s in memory (`server.py:CACHE_SECONDS`, `server.py:call`); each call times out after 10 s (`server.py:TIMEOUT`).
+- **Outside sources.** Neither the page nor its script calls an outside site; the two fonts load from `/fonts/` on this server (`server.py:FONTS`). The script asks `server.py` at `/source/<name>?<query>` (`zulu-clock.js:src`), and `server.py` calls the fixed address for that name (`server.py:SOURCES`, the one list of every outside source). Answers to GET calls are cached 120 s in memory (`server.py:CACHE_SECONDS`, `server.py:call`); each call times out after 10 s (`server.py:TIMEOUT`).
 - **Status.** `server.py:call` records how each distinct call went; `/status` reports it per source (`server.py:status`). The page prints every status word from `/status` (`zulu-clock.js:renderStatus`).
 - **Weather and moon.** Open-Meteo and Aviation Weather through `/source/`; the moon is computed in the page (`getMoonPhaseData`), no source.
 - **Clocks and Christmas.** `clockFace` picks what the clock block shows: Zulu big (`zuluTime`) with `LOCAL` and this device's time (`localClock`) small under it in green and blue, the two swapped in pink. In pink mode the SA panel shows the days until Christmas (`christmasItem`), computed in the page, no source.
@@ -70,7 +71,7 @@ One change endpoint, for docks. Nothing the clock reads is changed through the s
 |---|---|---|---|---|
 | `POST /__docks/close` | Answers `{"answer": "closing", "reason", "as_of"}` (always: the cache and call log only refill), then stops the server so the process exits | `for` = restart \| quit | not this server's Host (403); not sent as `application/json`, so a web page cannot post it without asking first (415); a body that is missing, not JSON or without a known `for` (400); any other POST path (404) | `server.py:Handler.do_POST` |
 
-Every request must name this server as its Host (`127.0.0.1` or `localhost`), else 403 (`server.py:OWN_HOSTS`), so a web page on another name cannot reach cmd fs or Presser through it. Only `/`, `/zulu-clock.html` and `/zulu-clock.js` are served from the folder (`server.py:SERVED_FILES`); any other file is 404.
+Every request must name this server as its Host (`127.0.0.1` or `localhost`), else 403 (`server.py:OWN_HOSTS`), so a web page on another name cannot reach cmd fs or Presser through it. Only `/`, `/zulu-clock.html`, `/zulu-clock.js` and the two files in `FONTS` are served from the folder (`server.py:SERVED_FILES`); any other file is 404.
 
 Reads, all GET:
 

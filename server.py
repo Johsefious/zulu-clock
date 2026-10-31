@@ -72,10 +72,11 @@ MODES = ('green', 'pink', 'blue')
 launch_mode = None            # set at start from the optional third argument
 page_seen = False             # has a clock page said hello since this start
 
-# Only the page and its script are served from the folder; nothing else in it (.git, the test log, docs) is reachable.
+# Only the page, its script and its two fonts are served from the folder; nothing else in it (.git, the test log, docs) is reachable.
 PAGE = '/zulu-clock.html'
 SCRIPT = '/zulu-clock.js'
-SERVED_FILES = {'/': PAGE, PAGE: PAGE, SCRIPT: SCRIPT}
+FONTS = ('/fonts/share-tech-mono-latin.woff2', '/fonts/vt323-latin.woff2')
+SERVED_FILES = {'/': PAGE, PAGE: PAGE, SCRIPT: SCRIPT, **{f: f for f in FONTS}}
 # A request must name this server by one of these, or it comes from a web page that is not the clock
 # (DNS rebinding), which must not reach cmd fs or Presser through us.
 OWN_HOSTS = {'127.0.0.1', 'localhost'}
