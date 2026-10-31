@@ -6,13 +6,13 @@ Where things live, what each call reads and how data moves: `docs/code-map.md`. 
 
 ## Install and run
 
-Needs macOS, Python 3, the `port` command from the ports repo (find it with `repo path ports`; see its README) and an internet connection (weather, news and SA are live data). The clock finds its own port, Presser's and cmd fs's in the ports list.
+Needs macOS, Python 3, the `port` command from the ports repo (find it with `repo path ports`; see its README), an internet connection (weather, news and SA are live data) and, for the missions, cmd fs's router running on this Mac (without it the clock says so). The clock finds its own port, Presser's and cmd fs's in the ports list.
 
 ```bash
 ./launch.sh
 ```
 
-This starts `server.py`. A clock tab that is already open reloads itself from the new server; when no clock page checks in within a few seconds, the clock opens in your browser. `./launch.sh pink` (or `green`, `blue`) opens it in that mode; `./launch-pink.sh` does the same for pink. `Ctrl+C` stops it. If its port is taken, `launch.sh` stops the holder only when it is an earlier Zulu Clock server; otherwise it says so and exits. To see the port, run `port list`.
+This starts `server.py`. A clock tab that is already open reloads itself from the new server; when no clock page checks in within a few seconds, the clock opens in your browser. `./launch.sh pink` (or `green`, `blue`) opens it in that mode; `./launch-pink.sh` does the same for pink. `Ctrl+C` stops it. If its port is held by something else, `launch.sh` says so and exits (the code map says what it will stop). To see the port, run `port list`.
 
 The clock has a Dock icon; `docks app list` shows its entry.
 
@@ -33,4 +33,4 @@ python3 -m venv .venv && .venv/bin/pip install pytest
 
 ## Status
 
-The clock works: every source it shows is read through `server.py`, and every status word on it comes from a real call to that source. "Answering" means a reply came in time, not that the reply was good. Missions need cmd fs's router running, otherwise the clock says so. A failed SA source counts as failed, not as "no alerts", so the panel retries when most fail; `/status` tells you which feed is down.
+The clock works: every source it shows is read through `server.py`, and every status word on it comes from a real call to that source. "Answering" means a reply came in time, not that the reply was good. A failed SA source counts as failed, not as "no alerts"; `/status` tells you which feed is down.
