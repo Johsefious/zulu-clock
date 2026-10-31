@@ -228,7 +228,7 @@ CLOSE_REASON = 'Nothing needs saving; a restart loses only the feed cache and ca
 
 def restart_status():
     """What docks asks before a restart: built fresh, no outside calls."""
-    return {'clear': True, 'reason': 'A restart loses only the feed cache, which refills on the next calls.',
+    return {'clear': True, 'reason': 'A restart loses only the feed cache and call log, which refill on the next calls.',
             'as_of': now_iso()}
 
 
