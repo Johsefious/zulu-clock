@@ -85,8 +85,4 @@ Reads, all GET:
 - Any other path: 404 (only the files in `server.py:SERVED_FILES` are served).
 
 ## Tests
-
-- **Suite:** `tests/`, contract tests only: `test_server_leaks.py` (who the server answers, which files and fields it sends, `no-cache` on the page and script) and `test_dock_json.py` (`dock.json` agrees with `launch.sh` and `server.py`). Why only these: `docs/decisions.md`, "The suite holds only contract tests".
-- **Archive:** `tests/archive/`, builders' tests, skipped by pytest unless named. Page tests run the script's own functions in node through `tests/archive/page_js.py` (`pick`).
-- **Run record:** `test-runs.jsonl` in the repo's main folder, untracked, written on every run by the testruns recorder, which `tests/conftest.py` loads. `testruns last --full` and `testruns passed <commit>` read it back. The `tests` key in `app.json` says what the whole suite is.
-- **Run the suite:** `.venv/bin/python -m pytest -q`. Run an archived test by naming its file, for example `.venv/bin/python -m pytest tests/archive/test_zone_rows.py -q`.
+How tests run, where they live and how runs are recorded: the testing skill.
