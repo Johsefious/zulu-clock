@@ -26,6 +26,14 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 - **By:** Joe
 - **Status:** active
 
+## The big clock is local time, Zulu is a small line
+- **Date:** 2026-10-29
+- **Decided:** the big clock shows this device's own time zone in 24 hours, with the zone's name in its label and date line; Zulu time moves to a small line under the date.
+- **Against:** Zulu as the big clock.
+- **Why:** the time that matters most at a glance is the local one.
+- **By:** Joe
+- **Status:** superseded by "Zulu is the big clock in green and blue, local time in pink"
+
 ## Zulu is the big clock in green and blue, local time in pink
 - **Date:** 2026-10-29
 - **Decided:** green and blue show Zulu big with a small `LOCAL` line and this device's time under it. Pink swaps them: this device's time big (zone's name in its label and date line), Zulu small.
@@ -65,6 +73,14 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 - **Why:** a quiet panel must mean quiet sources, not broken ones.
 - **By:** Claude, from the 2026-10-29 code review
 - **Status:** active
+
+## Ports stay where they are
+- **Date:** 2026-10-29
+- **Decided:** no shared ports file. The clock's own port (8769) is in `launch.sh` and `dock.json`, and a suite test keeps the two agreeing. Presser's (8771) and cmd fs's (8767) are those apps' home ports; cmd fs's can be changed with `MISSIONS_CALL`.
+- **Against:** one config file read by the shell script, the server and the page.
+- **Why:** the numbers are other apps' fixed addresses or already checked against each other; a config layer would add a moving part and fix nothing.
+- **By:** Claude, from the 2026-10-29 code review
+- **Status:** superseded by "Ports come from the ports list"
 
 ## The suite holds only contract tests
 - **Date:** 2026-10-29
