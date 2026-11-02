@@ -10,7 +10,7 @@
   },
   "tests": {
     "runner": "pytest",
-    "command": "pytest tests/suite",
+    "command": "\"$(repo path app-dev)/.venv/bin/python\" -m pytest -q -p no:xdist tests/suite",
     "folders": [
       "tests/suite"
     ],
