@@ -140,7 +140,7 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 
 ## dock.json names its Ports entry, not a port number
 - **Date:** 2026-10-30
-- **Decided:** `dock.json` gives the clock's port as `"port": {"ports": "zulu-clock"}`; docks asks `port home zulu-clock` for the number. The suite (`tests/test_dock_json.py`) checks the number docks would use against `launch.sh`.
+- **Decided:** `dock.json` gives the clock's port as `"port": {"ports": "zulu-clock"}`; docks asks `port home zulu-clock` for the number. The suite (`tests/suite/test_dock_json.py`) checks the number docks would use against `launch.sh`.
 - **Against:** keeping the number typed in `dock.json` and checked by the suite (the earlier "Ports come from the ports list" entry).
 - **Why:** the ports list is the one home of every port; with the number typed, a moved port needed a second edit in `dock.json`.
 - **By:** the Ports session asked; Claude built it
