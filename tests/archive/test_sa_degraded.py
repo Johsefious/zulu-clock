@@ -1,6 +1,7 @@
 """The SA panel counts a source that failed (fetch rejected or HTTP error) as failed, so saDegraded can turn true and
 launchWithRetry backs off; a source that answered with no alerts is not a failure. Runs the page's own fetchers in
 node with fetch stubbed (the real fetchT turns an HTTP error into a rejection)."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import subprocess
 

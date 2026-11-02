@@ -1,6 +1,7 @@
 """The big clock shows the device's own time zone and Zulu moves to a small line under it; pink mode shows days until
 Christmas in place of alerts. Runs the page's own localClock, zuluTime and christmasItem in node, with the zone
 named so the result does not depend on the machine running the test."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import subprocess
 

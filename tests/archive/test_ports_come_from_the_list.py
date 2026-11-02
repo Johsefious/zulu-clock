@@ -133,27 +133,8 @@ def test_go_presser_refuses_plainly_when_the_address_is_unknown(clock, monkeypat
     assert b'no home port for presser' in body
 
 
-def test_a_failed_lookup_is_failing_in_status_and_does_not_crash(clock, monkeypatch):
-    monkeypatch.setattr(server, 'home_port', lambda repo: (None, f'no home port for {repo}'))
-    assert get(clock, '/source/presser')[0] == 502
-    assert get(clock, '/missions')[0] == 502
-    p, m = state(clock, 'presser'), state(clock, 'mission-cmd')
-    assert (p['state'], p['error']) == ('failing', 'no home port for presser')
-    assert (m['state'], m['error']) == ('failing', 'no home port for cmd-fs')
-    assert get(clock, '/status')[0] == 200
-
-
 def test_missions_call_still_overrides_cmd_fs_address(clock, monkeypatch):
     monkeypatch.setattr(server, 'MISSIONS_CALL', 'http://127.0.0.1:1')
     monkeypatch.setattr(server, 'home_port', lambda repo: (None, 'must not be asked'))
     assert get(clock, '/missions')[0] == 502
     assert state(clock, 'mission-cmd')['state'] == 'offline'
-
-
-def test_a_lookup_that_works_again_clears_the_old_failure(clock, monkeypatch):
-    monkeypatch.setattr(server, 'home_port', lambda repo: (None, 'port command not found'))
-    get(clock, '/source/presser')
-    assert state(clock, 'presser')['state'] == 'failing'
-    monkeypatch.setattr(server, 'home_port', lambda repo: (9, ''))
-    assert get(clock, '/go/presser')[0] == 302
-    assert state(clock, 'presser')['state'] == 'not called'

@@ -10,9 +10,9 @@
   },
   "tests": {
     "runner": "pytest",
-    "command": "pytest tests",
+    "command": "pytest tests/suite",
     "folders": [
-      "tests"
+      "tests/suite"
     ],
     "filter": ""
   }

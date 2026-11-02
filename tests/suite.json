@@ -1,0 +1,59 @@
+{
+  "suite_json": 1,
+  "tests": [
+    {
+      "file": "tests/suite/test_dock_close.py",
+      "reason": "endpoint",
+      "source": "POST /__docks/close and GET /__docks/restart-status, docks' restart-safety calls (docs/code-map.md, Endpoints; server.py:Handler.do_POST, server.py:restart_status)",
+      "added": "2026.11.02",
+      "names": [
+        "test_restart_status_is_clear_with_a_reason",
+        "test_restart_status_refuses_a_foreign_host",
+        "test_close_answers_closing_then_the_process_exits",
+        "test_close_refuses_a_foreign_host",
+        "test_close_with_a_bad_body_is_400_with_a_reason",
+        "test_any_other_post_is_404",
+        "test_a_close_that_is_not_json_is_refused_and_the_clock_keeps_running"
+      ]
+    },
+    {
+      "file": "tests/suite/test_dock_json.py",
+      "reason": "outside",
+      "source": "docks reads dock.json by its contract (docks/docs/dock-json.md, f61fbe6) and asks the ports repo's `port home zulu-clock` for the port; a field docks does not know or a port that disagrees with launch.sh breaks the Dock tile",
+      "added": "2026.11.02",
+      "names": [
+        "test_every_field_is_known_and_the_required_ones_are_there",
+        "test_the_icon_is_an_svg_in_this_repo",
+        "test_port_page_and_tab_match_agree_with_launch_sh",
+        "test_a_server_docks_starts_is_one_launch_sh_and_docks_both_call_their_own",
+        "test_health_is_a_path_the_server_answers_itself",
+        "test_stale_means_server_py_changed_and_not_the_page_it_reads_every_request",
+        "test_env_passes_through_every_variable_server_py_reads"
+      ]
+    },
+    {
+      "file": "tests/suite/test_ports_come_from_the_list.py",
+      "reason": "rule",
+      "source": "CLAUDE.md, Learned the hard way: every status indicator on the clock points to an actual measurement (a failed port lookup shows as failing in /status, docs/code-map.md Data flow, Other apps' ports)",
+      "added": "2026.11.02",
+      "names": [
+        "test_a_failed_lookup_is_failing_in_status_and_does_not_crash",
+        "test_a_lookup_that_works_again_clears_the_old_failure"
+      ]
+    },
+    {
+      "file": "tests/suite/test_server_leaks.py",
+      "reason": "endpoint",
+      "source": "docs/code-map.md, Endpoints: every route refuses a foreign Host (OWN_HOSTS, 403), only SERVED_FILES are served, GET /missions and GET /source/presser cut to the fields the cards draw; served with no-cache per docs/decisions.md, The page's script lives in its own file",
+      "added": "2026.11.02",
+      "names": [
+        "test_a_foreign_host_name_gets_nothing",
+        "test_the_clock_itself_still_gets_answers",
+        "test_missions_carry_only_what_the_card_draws",
+        "test_press_carries_only_what_the_card_draws",
+        "test_only_the_page_is_served_from_the_folder",
+        "test_the_page_and_script_are_revalidated_on_every_load"
+      ]
+    }
+  ]
+}

@@ -4,6 +4,7 @@ heartbeatStep(first, answer, path, search) is the page's decision, run here in n
 boot id to remember (the first one heard), go is null (stay) or the address to load. A restart that carries a launch
 mode loads path?mode=<mode>; one without reloads on the page's own address (so its ?mode= stays).
 """
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import subprocess
 

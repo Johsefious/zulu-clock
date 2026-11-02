@@ -1,5 +1,6 @@
 """A finished Presser story (every step done) gets no card on the clock, the way an archived one gets none
 (GitHub issue 1). Runs the page's own pressVisible in node."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import subprocess
 

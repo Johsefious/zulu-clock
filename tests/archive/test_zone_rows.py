@@ -1,6 +1,7 @@
 """The zone rows read each zone's time through zoneParts (Intl parts), not by parsing a locale string in the device's
 zone. Runs the page's own zoneRow in node with the machine's zone set to Tokyo, so a round-trip through the device's
 zone would give a different answer."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import os
 import subprocess

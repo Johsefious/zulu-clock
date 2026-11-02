@@ -1,5 +1,6 @@
 """fetchT is the one fetch every loader uses and it throws `HTTP <status>` on a non-ok answer, so an HTTP 502 from
 server.py is never parsed as data. Runs the page's own fetchT, fetchMetar and fetchFeed in node with fetch stubbed."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import subprocess
 

@@ -1,6 +1,7 @@
 """The big time's last digit ticks evenly. The main once-a-second work is scheduled from the current milliseconds, so
 a late timer never holds a second or skips one. Runs the page's own onTheSecond in node with a fake clock whose timers
 fire late by varying amounts."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import subprocess
 

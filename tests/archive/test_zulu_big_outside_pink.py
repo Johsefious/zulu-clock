@@ -1,6 +1,7 @@
 """Green and blue show Zulu as the big clock with LOCAL and this device's time on the small line under it; pink keeps
 this device's time big with ZULU small. Runs the page's own clockFace in node, with the zone named so the result does
 not depend on the machine running the test."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import subprocess
 

@@ -1,10 +1,11 @@
 """The page loads its two fonts from this server, not from Google, so /status covers every outside call."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import os
 import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from test_server_leaks import ROOT, clock, get  # noqa: E402,F401
+from suite.test_server_leaks import ROOT, clock, get  # noqa: E402,F401
 
 FONTS = ('/fonts/share-tech-mono-latin.woff2', '/fonts/vt323-latin.woff2')
 

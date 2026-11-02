@@ -1,5 +1,6 @@
 """page_js.pick finds a function or const whatever its indent, so the page script can be re-indented without every
 archive test breaking."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import page_js
 
 SAMPLE = {

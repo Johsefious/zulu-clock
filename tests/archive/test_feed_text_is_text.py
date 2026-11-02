@@ -1,6 +1,7 @@
 """Text that arrives from a feed (news titles and links, alert headlines and details) is shown as text and never
 becomes markup. Runs the page's own ticker and alert-card code in node with hostile feed text, and a stand-in
 for the one page element the card is drawn into."""
+import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import re
 import subprocess
