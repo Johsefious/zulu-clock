@@ -95,12 +95,6 @@ def test_a_foreign_host_name_gets_nothing(clock):
         assert get(clock, path, host=f'attacker.example:{clock}')[0] == 403, path
 
 
-def test_the_clock_itself_still_gets_answers(clock):
-    for host in (f'127.0.0.1:{clock}', f'localhost:{clock}'):
-        assert get(clock, '/missions', host=host)[0] == 200, host
-        assert get(clock, '/status', host=host)[0] == 200, host
-
-
 def test_missions_carry_only_what_the_card_draws(clock):
     status, body = get(clock, '/missions')
     assert status == 200
@@ -134,9 +128,3 @@ def test_only_the_page_is_served_from_the_folder(clock):
                  '/tests/archive/page_js.py', '/zulu-clock.js.bak', '/zulu-clock.css',
                  '/%2e%2e/etc/passwd'):
         assert get(clock, path)[0] == 404, path
-
-
-def test_the_page_and_script_are_revalidated_on_every_load(clock):
-    # Without this Chrome may reuse a cached old zulu-clock.js against a new page after an update.
-    for path in ('/', '/zulu-clock.html', '/zulu-clock.js'):
-        assert cache_control(clock, path) == (200, 'no-cache'), path

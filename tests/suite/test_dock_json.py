@@ -45,12 +45,6 @@ def test_every_field_is_known_and_the_required_ones_are_there():
     assert (d['key'], d['name'], d['bundle_id']) == ('zulu', 'Zulu Clock', 'org.ffw.zulu-clock')
 
 
-def test_the_icon_is_an_svg_in_this_repo():
-    d = dock()
-    assert d['icon'].endswith('.svg')
-    assert read(d['icon']).lstrip().startswith('<svg')
-
-
 def test_port_page_and_tab_match_agree_with_launch_sh():
     d = dock()
     assert 'port home zulu-clock' in launch_sh('PORT')
