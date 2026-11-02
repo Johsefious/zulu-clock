@@ -138,6 +138,8 @@
   let   saDegraded       = false;
   let   saAlerts         = [];
   let   saIdx            = 0;
+  let   saLastFresh      = [];          // what the sources reported on the latest refresh
+  const saDismissed      = new Set();   // alerts double-clicked away; cleared by a page reload
   let   saCycleTmr       = null;
   let   statusData       = null;   // server.py's /status: how each source's latest calls went
 
@@ -1084,32 +1086,31 @@
     }, SA_DWELL_MS);
   }
 
-  // 48-hour alert persistence via localStorage —
-  // alerts detected by any fetcher are kept for 48h even if the live feed
-  // no longer returns them (handles gaps between NHC advisories, WHO posts, etc.)
-  const SA_STORE_KEY = 'zc_sa_v1';
-  const SA_PERSIST_MS = 48 * 3600 * 1000;
-
-  function saLoadStored() {
-    try {
-      const items = JSON.parse(localStorage.getItem(SA_STORE_KEY) || '[]');
-      return items.filter(a => (Date.now() - a._seen) < SA_PERSIST_MS);
-    } catch { return []; }
+  // The panel shows what the sources report now: each source drops an alert when it ends (NWS cancels, NHC
+  // retires a storm, EONET closes an event, USGS keeps a day), so nothing is kept after that. A double-click
+  // hides the alert on screen until the page is reloaded; the list lives in this page's memory only.
+  function saKey(a) {
+    return `${a.cat}|${a.headline}`;
   }
 
-  function saMerge(fresh) {
-    const now    = Date.now();
-    const stored = saLoadStored();
-    const seenAt = new Map(stored.map(a => [`${a.cat}|${a.headline}`, a._seen]));
-    // Tag fresh items with first-seen timestamp
-    const tagged = fresh.map(a => ({ ...a, _seen: seenAt.get(`${a.cat}|${a.headline}`) || now }));
-    const freshKeys = new Set(tagged.map(a => `${a.cat}|${a.headline}`));
-    // Retain cached items not in fresh results (still within 48h)
-    const persisted = stored.filter(a => !freshKeys.has(`${a.cat}|${a.headline}`));
-    const merged = [...tagged, ...persisted];
-    try { localStorage.setItem(SA_STORE_KEY, JSON.stringify(merged.slice(0, 60))); } catch {}
-    return merged;
+  // A headline that changes (a storm gaining strength) is a new alert and shows again.
+  function saBuild(fresh) {
+    return saDeduplicateStorms(fresh)
+      .filter(a => !saDismissed.has(saKey(a)))
+      .sort((a, b) => b.sev - a.sev);
   }
+
+  function saDismissCurrent() {
+    if (isPink()) return;
+    const a = saAlerts[saIdx];
+    if (!a) return;
+    saDismissed.add(saKey(a));
+    saAlerts = saBuild(saLastFresh);
+    saIdx    = 0;
+    saStartCycle();
+    rebuildTicker();
+  }
+  document.getElementById('sa-item').addEventListener('dblclick', saDismissCurrent);
 
   // NHC (cat:'TROPICAL') and EONET (cat:'SEVERE STORMS') both report the same
   // tropical systems. Keep the NHC entry (richer: category, wind speed, region);
@@ -1133,7 +1134,8 @@
     const results = await Promise.allSettled(SA_FETCHERS.map(f => f()));
     const fresh   = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value).filter(Boolean);
     saDegraded    = saIsDegraded(results, SA_FETCHERS.length);
-    saAlerts      = saDeduplicateStorms(saMerge(fresh)).sort((a, b) => b.sev - a.sev);
+    saLastFresh   = fresh;
+    saAlerts      = saBuild(fresh);
     saIdx         = 0;
     saStartCycle();
     rebuildTicker();
