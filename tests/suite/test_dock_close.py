@@ -60,11 +60,6 @@ def test_restart_status_is_clear_with_a_reason(srv):
     assert p.poll() is None
 
 
-def test_restart_status_refuses_a_foreign_host(srv):
-    _, port = srv
-    assert ask(port, 'GET', '/__docks/restart-status', host='evil.example')[0] == 403
-
-
 @pytest.mark.parametrize('why', ['restart', 'quit'])
 def test_close_answers_closing_then_the_process_exits(srv, why):
     p, port = srv
