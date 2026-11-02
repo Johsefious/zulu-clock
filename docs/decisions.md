@@ -153,3 +153,19 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 - **Why:** every outside call should go through `server.py` and show in `/status`; the clock also keeps its look offline. Characters outside latin fall back to the next family in the font stack.
 - **By:** Joe asked; Claude built it
 - **Status:** active
+
+## The SA panel shows what the sources report now
+- **Date:** 2026-11-02
+- **Decided:** The SA panel drops the 48-hour keep (`zc_sa_v1` in localStorage). An alert shows while its source reports it and goes when the source drops it: NWS cancels, NHC retires a storm, EONET closes an event, USGS keeps one day.
+- **Against:** keeping every alert 48 hours after its source dropped it, which Joe added so early warnings would not disappear while still happening.
+- **Why:** in practice the kept alerts made the panel read as stale, and the sources already end their own alerts. A source that fails for one refresh loses its alerts until it answers again.
+- **By:** Joe; Claude built it
+- **Status:** active
+
+## A double-click hides an SA alert until the page reloads
+- **Date:** 2026-11-02
+- **Decided:** Double-clicking the alert card hides that alert on the panel and the ticker until the page is reloaded. The hidden list is in the page's memory only (`saDismissed`). An alert whose headline changes counts as new and shows again.
+- **Against:** remembering a dismissal in localStorage or on the server, which would need an endpoint and could hide a changing alert for good.
+- **Why:** Joe wants stale cards out of the way without losing anything for good; a reload brings everything back.
+- **By:** Joe; Claude built it
+- **Status:** active
