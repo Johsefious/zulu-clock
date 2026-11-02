@@ -15,9 +15,9 @@ zulu-clock/
 ├── pytest.ini        the suite is tests/; tests/archive/ is skipped unless named
 ├── tests/
 │   ├── conftest.py   one line that loads the testruns recorder (`testruns hook` wrote it)
-│   ├── test_server_leaks.py  suite: who the server answers, which files and fields it sends
-│   ├── test_dock_json.py     suite: dock.json agrees with launch.sh and server.py
-│   └── archive/      builders' tests (fonts: `test_fonts_served_locally.py`)
+│   ├── suite.json    the suite's ledger: each kept test with its reason, source and review stamp
+│   ├── suite/        the suite: `test_server_leaks.py` (who the server answers, which files and fields it sends), `test_dock_close.py` (the close and restart-status endpoints), `test_dock_json.py` (dock.json agrees with launch.sh and server.py), `test_ports_come_from_the_list.py`; `page_js.py` and `conftest.py` are their helpers
+│   └── archive/      builders' tests, including the tests dropped from the suite by the sweep (`test_server_leaks.py`, `test_dock_close.py`, `test_dock_json.py`)
 ├── app.json          what the repo is (family none, app, not shipped, uses docks and port) and the `tests` key testruns owns
 ├── tools/open_clock.sh   launch.sh's opener: waits up to 6 s (`CLOCK_SEEN_WAIT`) for `/__clock/seen`, then `open` only if no clock page checked in; never scripts the browser
 ├── docs/             code-map.md (this file), decisions.md, and handoff.md (git-ignored)
