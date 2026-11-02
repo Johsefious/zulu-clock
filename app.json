@@ -10,7 +10,7 @@
   },
   "tests": {
     "runner": "pytest",
-    "command": "pytest",
+    "command": "pytest tests",
     "folders": [
       "tests"
     ],
