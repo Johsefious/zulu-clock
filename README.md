@@ -26,9 +26,10 @@ To see which sources are answering right now, with the reason when one isn't, ru
 
 ## Tests
 
+The tests run on the shared test venv in app-dev (app-dev's CLAUDE.md gives the one-time setup), one at a time, because the server tests share ports.
+
 ```bash
-python3 -m venv .venv && .venv/bin/pip install pytest
-.venv/bin/python -m pytest -q
+"$(repo path app-dev)/.venv/bin/python" -m pytest -q -p no:xdist
 ```
 
 ## Status
