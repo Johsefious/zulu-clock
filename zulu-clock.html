@@ -140,6 +140,8 @@
       pointer-events: none;
       z-index: 998;
     }
+    /* Pink: the vignette darkens only the pink background; everything sits in front of it. */
+    html[data-mode="pink"] body::after { z-index: 0; }
 
     .grid-bg {
       position: fixed; inset: 0;
