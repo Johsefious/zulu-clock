@@ -64,7 +64,7 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 - **Against:** one 2,100-line HTML file; splitting the script into modules (more files for a page with no build step).
 - **Why:** the page and its logic can be read and changed apart, and tests stop carrying six copies of the same extraction.
 - **By:** Claude, from the 2026-10-29 code review; Joe asked for the review's work to be finished
-- **Status:** active
+- **Status:** active, except "`tests/archive/page_js.py`": superseded by "The page-script helper lives in the suite"
 
 ## A failed SA source counts as failed
 - **Date:** 2026-10-29
@@ -168,4 +168,12 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 - **Against:** remembering a dismissal in localStorage or on the server, which would need an endpoint and could hide a changing alert for good.
 - **Why:** Joe wants stale cards out of the way without losing anything for good; a reload brings everything back.
 - **By:** Joe; Claude built it
+- **Status:** active
+
+## The page-script helper lives in the suite
+- **Date:** 2026-11-02
+- **Decided:** the helper that reads functions from the page's script is `tests/suite/page_js.py`. Suite tests import it directly; archived tests reach it through a `sys.path` line that points at `../suite`.
+- **Against:** keeping it at `tests/archive/page_js.py`, where the suite's tests could not import it.
+- **Why:** the 2026-11-02 suite sweep kept tests in the suite that use it, and a helper the suite needs has to live in the suite.
+- **By:** the suite sweep (`repo sweep-tests`); Claude recorded it
 - **Status:** active
