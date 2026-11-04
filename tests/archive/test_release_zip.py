@@ -59,7 +59,7 @@ def test_the_zip_folder_holds_an_installer_a_read_me_and_only_what_the_clock_run
     assert os.stat(built / INSTALLER).st_mode & stat.S_IXUSR
     run = sorted(f[len('Files/'):] for f in files if f.startswith('Files/'))
     assert run == ['VERSION', 'dock.json', 'fonts/share-tech-mono-latin.woff2', 'fonts/vt323-latin.woff2',
-                   'icons/zulu-clock.svg', 'server.py', 'zulu-clock.html', 'zulu-clock.js']
+                   'icons/Zulu Clock.icns', 'icons/zulu-clock.svg', 'server.py', 'zulu-clock.html', 'zulu-clock.js']
     assert not os.path.lexists(built / 'Files' / 'shared')
     assert (built / 'Files' / 'VERSION').read_text().strip() == '9.9.9'
     for must in ('server.py', 'zulu-clock.html', 'zulu-clock.js', 'dock.json', 'icons/zulu-clock.svg'):

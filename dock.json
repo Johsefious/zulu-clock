@@ -4,6 +4,7 @@
   "name": "Zulu Clock",
   "bundle_id": "org.ffw.zulu-clock",
   "icon": "icons/zulu-clock.svg",
+  "icon_icns": "icons/Zulu Clock.icns",
   "icon_px": 824,
 
   "port": {"ports": "zulu-clock"},

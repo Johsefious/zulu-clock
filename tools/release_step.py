@@ -2,14 +2,14 @@
 """repo release's step for Zulu Clock: release_step.py DEST VERSION.
 
 Fills DEST (the zip's top folder) with the installer, a read-me and Files/, which holds only what the clock runs:
-the server, the page and its script, the two fonts, the Dock icon and dock.json. No tests, docs, launch scripts,
+the server, the page and its script, the two fonts, the Dock icon (svg and ready-made .icns) and dock.json. No tests, docs, launch scripts,
 notes or logs. The shared services (docks, ports) are added by repo release, not here."""
 import os
 import shutil
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RUNS = ['server.py', 'zulu-clock.html', 'zulu-clock.js', 'dock.json', 'icons/zulu-clock.svg',
+RUNS = ['server.py', 'zulu-clock.html', 'zulu-clock.js', 'dock.json', 'icons/zulu-clock.svg', 'icons/Zulu Clock.icns',
         'fonts/share-tech-mono-latin.woff2', 'fonts/vt323-latin.woff2']
 READ_ME = """Zulu Clock %s
 
