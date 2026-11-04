@@ -6,7 +6,7 @@ Where things live, what each call reads and how data moves, and why each choice 
 
 ## Install from the zip (teammates)
 
-Unzip `Zulu Clock 1.0.0.zip`, open the folder and double-click `Install Zulu Clock`. It checks for Python 3, installs the shared Docks and Ports tools if they are missing or older, copies the clock to `~/Applications/Zulu Clock`, makes the Zulu Clock app and puts it in the Dock, and checks that the clock's server answers. Open Zulu Clock from the Dock. Run a newer installer the same way to update; it never goes back to an older version and keeps nothing of yours to lose (the clock stores no files). The weather, news and alert sources need no key. Press and Missions show as not answering unless Presser and cmd fs are running on the same Mac.
+Unzip `Zulu Clock <version>.zip`, open the folder and double-click `Install Zulu Clock`. It checks for Python 3, installs the shared Docks and Ports tools if they are missing or older, copies the clock to `~/Applications/Zulu Clock`, makes the Zulu Clock app and puts it in the Dock, and checks that the clock's server answers. Open Zulu Clock from the Dock. Run a newer installer the same way to update; it never goes back to an older version and keeps nothing of yours to lose (the clock stores no files). The weather, news and alert sources need no key. Press and Missions show as not answering unless Presser and cmd fs are running on the same Mac.
 
 The zip is built with `repo release <this folder>`; the code map's Release section says what it holds.
 
