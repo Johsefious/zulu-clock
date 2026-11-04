@@ -177,3 +177,11 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 - **Why:** the 2026-11-02 suite sweep kept tests in the suite that use it, and a helper the suite needs has to live in the suite.
 - **By:** the suite sweep (`repo sweep-tests`); Claude recorded it
 - **Status:** active
+
+## Zulu Clock ships as a zip through repo release
+- **Date:** 2026-11-03
+- **Decided:** app.json has `"ships": true` and a `release` step, `tools/release_step.py`; `repo release` builds `dist/Zulu Clock <version>.zip` with `Install Zulu Clock.command`, `Read me.txt` and `Files/`, and bundles Ports and Docks in `Files/shared/`. `Files/` holds only the server, the page and its script, the two fonts, the icon (svg and a ready-made `Zulu Clock.icns`, named `icon_icns` in dock.json), dock.json and VERSION. The launch scripts, `tools/open_clock.sh`, tests and docs stay out: the Dock icon replaces `launch.sh` for a teammate. The first version is 1.0.0 (`VERSION`). `server.py` finds the Ports tool at its installed place first. The installer falls back to port 8769 when the Ports list gives no answer.
+- **Against:** a zip of the whole repo; leaving the icon to be drawn by Chrome on the teammate's Mac (docks says to ship an .icns, and a test install refuses to start Chrome); shipping `launch.sh`, which needs `port` on the PATH.
+- **Why:** every app's zip is built the one way (the release standard in the repo-master skill). The clock has no key, setting or data of its own, so nothing private belongs in the zip.
+- **By:** Joe's release standard; Claude built it
+- **Status:** active

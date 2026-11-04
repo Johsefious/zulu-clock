@@ -57,6 +57,7 @@ SOURCES = {
 }
 MISSIONS_CALL = (os.environ.get('MISSIONS_CALL') or '').rstrip('/')   # empty: cmd fs's home port from the list
 REPOS = {'presser': 'presser', 'mission-cmd': 'cmd-fs'}   # whose home port each source lives on
+INSTALLED_PORT = '~/Library/Application Support/Ports/tool/port'   # the Ports tool as the zip's installer installs it
 PORT_FALLBACK = '/opt/homebrew/bin/port'   # a server the Dock starts may have a bare PATH
 LOOKUP = 'port home'   # the key under which a failed lookup is recorded
 STATUS_ORDER = list(SOURCES) + ['mission-cmd']
@@ -107,7 +108,8 @@ def record(name, url, ok, error=''):
 
 def home_port(repo):
     """(port, '') from `port home <repo>`, or (None, plain reason)."""
-    cmd = shutil.which('port') or (PORT_FALLBACK if os.access(PORT_FALLBACK, os.X_OK) else None)
+    installed = os.path.expanduser(INSTALLED_PORT)   # where a teammate's installer puts the Ports tool
+    cmd = next((c for c in (installed, shutil.which('port'), PORT_FALLBACK) if c and os.access(c, os.X_OK)), None)
     if not cmd:
         return None, 'port command not found'
     try:
