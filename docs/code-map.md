@@ -10,7 +10,8 @@ zulu-clock/
 ├── launch.sh         entry point for a person: asks `port home zulu-clock` for its port; if the port is held, stops the holder only when it is this folder's server.py or the plain `http.server` earlier versions started, else says so and exits; starts server.py on the port (with the mode, if one was given) and runs tools/open_clock.sh; stops the server on Ctrl+C; without python3 it opens zulu-clock.html directly
 ├── launch-pink.sh    launch.sh opening in pink mode
 ├── dock.json         the Dock icon's contract with docks: the Ports entry (`zulu-clock`) for the port, the page address and tab match, the `server.py` start command, `/status` as the health path, a restart when `server.py` changes, what a click and Quit do to an open clock tab, and restart safety; passes `MISSIONS_CALL` through
-├── icons/            the Dock icon (zulu-clock.svg)
+├── icons/            the Dock icon: `zulu-clock.svg` and `Zulu Clock.icns`, the ready-made icon dock.json names as `icon_icns` (so a Mac without Chrome still gets the icon; made from the svg with docks' own `render_icns`)
+├── VERSION           the release version (1.0.0), copied into the zip's `Files/`; the installer compares it with the installed one
 ├── fonts/            Share Tech Mono and VT323, latin subsets (.woff2), declared by `@font-face` in zulu-clock.html and served by server.py
 ├── pytest.ini        the suite is tests/; tests/archive/ is skipped unless named
 ├── tests/
@@ -18,11 +19,13 @@ zulu-clock/
 │   ├── suite.json    the suite's ledger: each kept test with its reason, source and review stamp
 │   ├── suite/        the suite: `test_server_leaks.py` (who the server answers, which files and fields it sends), `test_dock_close.py` (the close and restart-status endpoints), `test_dock_json.py` (dock.json agrees with launch.sh and server.py), `test_ports_come_from_the_list.py`; `page_js.py` and `conftest.py` are their helpers
 │   └── archive/      builders' tests, including the tests dropped from the suite by the sweep (`test_server_leaks.py`, `test_dock_close.py`, `test_dock_json.py`)
-├── app.json          what the repo is (family none, app, not shipped, uses docks and port) and the `tests` key testruns owns
+├── app.json          what the repo is (family none, app, shipped, uses docks and port) and its `release` step and the `tests` key testruns owns
+├── tools/release_step.py   app.json's `release` step for `repo release`: `release_step.py DEST VERSION` fills the zip folder with the installer, `Read me.txt` and `Files/` (the server, the page and script, the fonts, the icon and its .icns, dock.json, VERSION); no tests, docs, launch scripts or logs
+├── tools/Install Zulu Clock.command   the teammate's installer (bash): Python 3 check, `install-shared.sh` (Docks and Ports), copy to `~/Applications/Zulu Clock`, `docks app add` or `app refresh zulu`, a check that the server answers; `ZULU_SETUP_HOME`/`ZULU_SETUP_PORT` make a test install under a folder
 ├── tools/open_clock.sh   launch.sh's opener: waits up to 6 s (`CLOCK_SEEN_WAIT`) for `/__clock/seen`, then `open` only if no clock page checked in; never scripts the browser
 ├── docs/             code-map.md (this file), decisions.md, and handoff.md (git-ignored)
 ├── README.md, CLAUDE.md
-└── .gitignore
+└── .gitignore        also ignores `dist/`, where `repo release` writes the zip
 ```
 
 ### Page sections
@@ -83,6 +86,10 @@ Reads, all GET:
 - `GET /__clock/hello`: `{"boot", "mode"}`, this server run's id and the launch mode (or null); notes in memory that a clock page checked in. The page calls it every 2 s.
 - `GET /__clock/seen`: `{"seen", "as_of"}`, whether a clock page has said hello since this start. `tools/open_clock.sh` reads it.
 - Any other path: 404 (only the files in `server.py:SERVED_FILES` are served).
+
+## Release
+
+`repo release <this folder>` runs app.json's `release` step (`tools/release_step.py`), adds the shared Ports and Docks tools in `Files/shared/` with `install-shared.sh`, and writes `dist/Zulu Clock <version>.zip`. The zip holds `Install Zulu Clock.command`, `Read me.txt` and `Files/`. The installer installs the shared tools (only if missing or older), copies `Files/` to `~/Applications/Zulu Clock`, has the installed Docks make the app, and checks `/status` and the page. `server.py:home_port` looks for the Ports tool at `~/Library/Application Support/Ports/tool/port` first (`server.py:INSTALLED_PORT`), then the PATH, then Homebrew's. Tests: `tests/archive/test_release_zip.py`.
 
 ## Tests
 How tests run, where they live and how runs are recorded: the testing skill.
