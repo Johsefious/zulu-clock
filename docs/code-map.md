@@ -89,7 +89,7 @@ Reads, all GET:
 
 ## Release
 
-`repo release <this folder>` runs app.json's `release` step (`tools/release_step.py`), adds the shared Ports and Docks tools in `Files/shared/` with `install-shared.sh`, and writes `dist/Zulu Clock <version>.zip`. The zip holds `Install Zulu Clock.command`, `Read me.txt` and `Files/`. The installer installs the shared tools (only if missing or older), copies `Files/` to `~/Applications/Zulu Clock`, has the installed Docks make the app, and checks `/status` and the page. `server.py:home_port` looks for the Ports tool at `~/Library/Application Support/Ports/tool/port` first (`server.py:INSTALLED_PORT`), then the PATH, then Homebrew's. Tests: `tests/archive/test_release_zip.py`.
+`repo release <this folder>` runs app.json's `release` step (`tools/release_step.py`), adds the shared Ports and Docks tools in `Files/shared/` with `install-shared.sh`, and writes `dist/Zulu Clock <version>.zip`. The zip holds `Install Zulu Clock.command`, `Read me.txt` and `Files/`. The installer installs the shared tools (only if missing or older), copies `Files/` to `~/Applications/Zulu Clock`, has the installed Docks make the app, and checks `/status` and the page. `server.py:home_port` looks for the Ports tool at `~/Library/Application Support/Ports/tool/port` first (`server.py:INSTALLED_PORT`), then the PATH, then Homebrew's. Tests: `tests/archive/test_release_zip.py`. <!-- pointers: ignore -->
 
 ## Tests
 How tests run, where they live and how runs are recorded: the testing skill.
