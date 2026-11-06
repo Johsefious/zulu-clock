@@ -1,10 +1,9 @@
 """fetchT is the one fetch every loader uses and it throws `HTTP <status>` on a non-ok answer, so an HTTP 502 from
 server.py is never parsed as data. Runs the page's own fetchT, fetchMetar and fetchFeed in node with fetch stubbed."""
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
-import json
-import subprocess
 
 from page_js import pick, source
+from node_js import run_node
 
 BAD = "async () => ({ ok: false, status: 502, json: async () => [{ icaoId: 'KSFO' }], text: async () => '<rss/>' })"
 GOOD = "async () => ({ ok: true, status: 200, json: async () => [{ icaoId: 'KSFO' }], text: async () => '<rss/>' })"
@@ -17,7 +16,7 @@ def run(fetch_stub, names, call):
               + pick(*names)
               + '(async () => { try { console.log(JSON.stringify(await (%s))); }'
                 ' catch (e) { console.log(JSON.stringify({ threw: e.message })); } })();' % call)
-    return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
+    return run_node(script)
 
 
 def test_fetcht_throws_http_status_on_a_bad_answer():

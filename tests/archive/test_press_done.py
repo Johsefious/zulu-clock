@@ -2,16 +2,16 @@
 (GitHub issue 1). Runs the page's own pressVisible in node."""
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
-import subprocess
 
 from page_js import pick
+from node_js import run_node
 
 
 
 def visible(stories):
     fn = pick('pressVisible')
     script = fn + 'console.log(JSON.stringify(pressVisible(%s).map(s => s.id)))' % json.dumps(stories)
-    return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
+    return run_node(script)
 
 
 def story(id, progress, archived=False):

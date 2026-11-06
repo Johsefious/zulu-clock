@@ -1,5 +1,15 @@
 # Code map
 
+## Overview
+
+Zulu Clock is a full-screen page that shows Zulu and local time, zone rows, the moon, California weather, a news ticker, a situational awareness (SA) panel, Press cards and Missions cards. It has three parts. The page is `zulu-clock.html` with its script `zulu-clock.js`, which draws everything. The local server, `server.py`, serves the page and makes every outside call for it. The launchers, `launch.sh` with `tools/open_clock.sh`, or the Dock icon through `dock.json`, start the server and open a tab.
+
+Opening the clock: `launch.sh` gets the port from `port home zulu-clock` and starts `server.py`. Then `tools/open_clock.sh` asks `GET /__clock/seen` and opens a tab only if no clock page has checked in. The page says hello at `GET /__clock/hello` every 2 s (`heartbeatStep`) and reloads when the server's boot id changes.
+
+A refresh: a loader such as `loadAllWx` or `loadHeadlines` calls `fetchT` on `/source/<name>`. `server.py` (`Handler.do_GET`, `call`) fetches that source's fixed address, caches the answer and records how the call went. The page then reads `GET /status` and prints each source's state (`renderStatus`). Press and Missions follow the same path through `/source/presser` and `GET /missions`.
+
+Details: Layout, Data flow and Endpoints below.
+
 ## Layout
 
 ```
@@ -18,11 +28,11 @@ zulu-clock/
 │   ├── conftest.py   one line that loads the testruns recorder (`testruns hook` wrote it)
 │   ├── suite.json    the suite's ledger: each kept test with its reason, source and review stamp
 │   ├── suite/        the suite: `test_server_leaks.py` (who the server answers, which files and fields it sends), `test_dock_close.py` (the close and restart-status endpoints), `test_dock_json.py` (dock.json agrees with launch.sh and server.py), `test_ports_come_from_the_list.py`; `page_js.py` and `conftest.py` are their helpers
-│   └── archive/      builders' tests, including the tests dropped from the suite by the sweep (`test_server_leaks.py`, `test_dock_close.py`, `test_dock_json.py`)
+│   └── archive/      builders' tests, including the tests dropped from the suite by the sweep (`test_server_leaks.py`, `test_dock_close.py`, `test_dock_json.py`, `test_ports_come_from_the_list.py`), which import their helpers and fixtures from the suite file of the same name; `node_js.py` (`run_node`) runs a script built with `page_js.pick` in node for every archive test of the page's code
 ├── app.json          what the repo is (family none, app, shipped, uses docks and port) and its `release` step and the `tests` key testruns owns
 ├── tools/release_step.py   app.json's `release` step for `repo release`: `release_step.py DEST VERSION` fills the zip folder with the installer, `Read me.txt` and `Files/` (the server, the page and script, the fonts, the icon and its .icns, dock.json, VERSION); no tests, docs, launch scripts or logs
 ├── tools/Install Zulu Clock.command   the teammate's installer (bash): Python 3 check, `install-shared.sh` (Docks and Ports), copy to `~/Applications/Zulu Clock`, `docks app add` or `app refresh zulu`, a check that the server answers; `ZULU_SETUP_HOME`/`ZULU_SETUP_PORT` make a test install under a folder
-├── tools/open_clock.sh   launch.sh's opener: waits up to 6 s (`CLOCK_SEEN_WAIT`) for `/__clock/seen`, then `open` only if no clock page checked in; never scripts the browser
+├── tools/open_clock.sh   launch.sh's opener: waits at least 6 s, under 7 (`CLOCK_SEEN_WAIT`), for `/__clock/seen`, then `open` only if no clock page checked in; never scripts the browser
 ├── docs/             code-map.md (this file), decisions.md, and handoff.md (git-ignored)
 ├── README.md, CLAUDE.md
 └── .gitignore        also ignores `dist/`, where `repo release` writes the zip

@@ -6,31 +6,15 @@
 - The Press link goes through GET /go/presser (302 to Presser's home address); the page holds no Presser port.
 - dock.json names its Ports entry, {"ports": "zulu-clock"}, and docks asks `port home zulu-clock` for the number.
 """
-import http.client
+
+# The helpers and fixtures are the suite's own (tests/suite/test_ports_come_from_the_list.py), not a copy.
 import json
 import os
 import subprocess
-import sys
-from functools import partial
-from http.server import ThreadingHTTPServer
-import threading
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
-import pytest
-
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT)
-import server  # noqa: E402
-
-PORT_CMD = '/opt/homebrew/bin/port'
-
-
-def home(repo):
-    return subprocess.run([PORT_CMD, 'home', repo], capture_output=True, text=True).stdout.strip()
-
-
-def text(name):
-    with open(os.path.join(ROOT, name)) as f:
-        return f.read()
+from suite.test_ports_come_from_the_list import ROOT, home, text, clock, get, state, server  # noqa: E402,F401
 
 
 # ---- no typed numbers ----
@@ -74,6 +58,7 @@ def test_home_port_finds_presser_and_cmd_fs_in_the_list():
 
 def test_home_port_says_why_in_plain_words(monkeypatch):
     assert server.home_port('no-such-repo') == (None, 'no home port for no-such-repo')
+    monkeypatch.setattr(server, 'INSTALLED_PORT', '/nonexistent/installed/port')
     monkeypatch.setattr(server.shutil, 'which', lambda name: None)
     monkeypatch.setattr(server, 'PORT_FALLBACK', '/nonexistent/port')
     assert server.home_port('presser') == (None, 'port command not found')
@@ -86,34 +71,12 @@ def test_home_port_works_with_a_bare_path(monkeypatch):
 
 # ---- server.py: routes and status ----
 
-def serve(handler):
-    httpd = ThreadingHTTPServer(('127.0.0.1', 0), handler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd
 
 
-@pytest.fixture
-def clock(monkeypatch):
-    monkeypatch.setattr(server, 'MISSIONS_CALL', '')
-    server._cache.clear()
-    server._calls.clear()
-    httpd = serve(partial(server.Handler, directory=ROOT))
-    yield httpd.server_port
-    httpd.shutdown()
 
 
-def get(port, path, host=None):
-    c = http.client.HTTPConnection('127.0.0.1', port, timeout=10)
-    c.putrequest('GET', path, skip_host=True)
-    c.putheader('Host', host or f'127.0.0.1:{port}')
-    c.endheaders()
-    r = c.getresponse()
-    return r.status, r.getheader('Location'), r.read()
 
 
-def state(port, name):
-    _, _, body = get(port, '/status')
-    return next(s for s in json.loads(body)['sources'] if s['name'] == name)
 
 
 def test_go_presser_sends_the_browser_to_presser(clock):

@@ -5,15 +5,14 @@ boot id to remember (the first one heard), go is null (stay) or the address to l
 mode loads path?mode=<mode>; one without reloads on the page's own address (so its ?mode= stays).
 """
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
-import json
-import subprocess
 
 from page_js import pick
+from node_js import run_node
 
 
 def run(call):
     script = pick('heartbeatStep') + 'console.log(JSON.stringify(%s))' % call
-    return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
+    return run_node(script)
 
 
 def test_the_first_answer_is_remembered_and_nothing_reloads():

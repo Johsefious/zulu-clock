@@ -7,7 +7,8 @@
 PORT="$1"; URL="$2"
 WAIT="${CLOCK_SEEN_WAIT:-6}"
 
-END=$((SECONDS + WAIT))
+# SECONDS ticks on whole seconds, so the first tick can come at once; the +1 keeps the wait at least WAIT.
+END=$((SECONDS + WAIT + 1))
 while :; do
     case "$(curl -s --max-time 1 "http://127.0.0.1:$PORT/__clock/seen" 2>/dev/null)" in
         *'"seen": true'*) exit 0 ;;
