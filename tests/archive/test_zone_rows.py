@@ -2,17 +2,16 @@
 zone. Runs the page's own zoneRow in node with the machine's zone set to Tokyo, so a round-trip through the device's
 zone would give a different answer."""
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
-import json
 import os
-import subprocess
 
 from page_js import pick
+from node_js import run_node
 
 
 def run(call):
     script = pick('pad', 'DAYS', 'MONS', 'zoneParts', 'zoneRow') + 'console.log(JSON.stringify(%s))' % call
     env = dict(os.environ, TZ='Asia/Tokyo')
-    return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True, env=env).stdout)
+    return run_node(script, env=env)
 
 
 def test_zone_row_format():

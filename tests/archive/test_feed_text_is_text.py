@@ -4,9 +4,9 @@ for the one page element the card is drawn into."""
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import re
-import subprocess
 
 from page_js import pick, source
+from node_js import run_node
 
 HOSTILE = '<img src=x onerror=alert(1)>'
 HALF = '&lt;img src=x onerror=alert(1)'            # a feed that encodes the tag and leaves it unclosed
@@ -14,7 +14,7 @@ HALF = '&lt;img src=x onerror=alert(1)'            # a feed that encodes the tag
 
 def run(body, *names):
     script = pick(*names) + body
-    return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
+    return run_node(script)
 
 
 def test_a_news_title_and_link_cannot_add_markup():

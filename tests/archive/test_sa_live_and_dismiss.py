@@ -4,9 +4,9 @@ Runs the page's own functions in node with the panel's other pieces stubbed."""
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
 import json
 import re
-import subprocess
 
 from page_js import pick, source
+from node_js import run_node
 
 FUNCS = ['saDeduplicateStorms', 'saKey', 'saBuild', 'saDismissCurrent']
 
@@ -24,7 +24,7 @@ def run(body, pink='false'):
               'function rebuildTicker() { calls.push("ticker"); }\n' % pink
               + pick(*FUNCS)
               + '(() => { %s })();' % body)
-    return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
+    return run_node(script)
 
 
 def test_the_panel_lists_only_what_the_sources_report_now_sorted_by_severity():

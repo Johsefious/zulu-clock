@@ -2,10 +2,9 @@
 a late timer never holds a second or skips one. Runs the page's own onTheSecond in node with a fake clock whose timers
 fire late by varying amounts."""
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
-import json
-import subprocess
 
 from page_js import pick, source
+from node_js import run_node
 
 HARNESS = """
 let now = 1761754800123, timers = [], n = 0, lates = [0, 40, 250, 90, 600, 5, 400, 180, 30, 700];
@@ -27,7 +26,7 @@ console.log(JSON.stringify(shown));
 
 def test_a_late_timer_never_holds_or_skips_a_second():
     script = HARNESS.replace('%s', pick('onTheSecond'))
-    shown = json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
+    shown = run_node(script)
     assert len(shown) > 100
     assert [b - a for a, b in zip(shown, shown[1:])] == [1] * (len(shown) - 1)
 

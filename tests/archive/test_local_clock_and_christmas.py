@@ -2,17 +2,16 @@
 Christmas in place of alerts. Runs the page's own localClock, zuluTime and christmasItem in node, with the zone
 named so the result does not depend on the machine running the test."""
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
-import json
-import subprocess
 
 from page_js import pick
+from node_js import run_node
 
 LA = 'America/Los_Angeles'
 
 
 def run(call):
     script = pick('pad', 'DAYS', 'MONS', 'zoneParts', 'localClock', 'zuluTime', 'daysUntilChristmas', 'christmasItem') + 'console.log(JSON.stringify(%s))' % call
-    return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
+    return run_node(script)
 
 
 def test_the_big_clock_reads_the_device_zone_in_24_hours():

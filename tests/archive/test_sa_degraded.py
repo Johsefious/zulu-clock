@@ -2,10 +2,9 @@
 launchWithRetry backs off; a source that answered with no alerts is not a failure. Runs the page's own fetchers in
 node with fetch stubbed (the real fetchT turns an HTTP error into a rejection)."""
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '../suite'))  # noqa
-import json
-import subprocess
 
 from page_js import pick
+from node_js import run_node
 
 FETCHERS = ['fetchT', 'saFailed', 'saIsFailed', 'saIsDegraded', 'saFetchSpace', 'saFetchNwsAlerts']
 
@@ -15,7 +14,7 @@ def run(fetch_stub, call):
               'const fetch = %s;\n' % fetch_stub
               + pick(*FETCHERS)
               + '(async () => console.log(JSON.stringify(await (%s))))();' % call)
-    return json.loads(subprocess.run(['node', '-e', script], capture_output=True, text=True, check=True).stdout)
+    return run_node(script)
 
 
 OK_QUIET = "u => ({ ok: true, status: 200, json: async () => [['t','kp'],['x','2']] })"
