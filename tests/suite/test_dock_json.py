@@ -63,10 +63,6 @@ def test_a_server_docks_starts_is_one_launch_sh_and_docks_both_call_their_own():
     assert fill(d['ours']['command'], d) in command_line
 
 
-def test_health_is_a_path_the_server_answers_itself():
-    assert f"path == '{dock()['health']}'" in read('server.py')
-
-
 def test_stale_means_server_py_changed_and_not_the_page_it_reads_every_request():
     d = dock()
     assert d['stale_if_changed'] == ['server.py']

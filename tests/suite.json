@@ -30,7 +30,6 @@
         "test_every_field_is_known_and_the_required_ones_are_there",
         "test_port_page_and_tab_match_agree_with_launch_sh",
         "test_a_server_docks_starts_is_one_launch_sh_and_docks_both_call_their_own",
-        "test_health_is_a_path_the_server_answers_itself",
         "test_stale_means_server_py_changed_and_not_the_page_it_reads_every_request",
         "test_env_passes_through_every_variable_server_py_reads"
       ],

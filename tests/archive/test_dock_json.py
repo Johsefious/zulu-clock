@@ -9,6 +9,10 @@ _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)
 from suite.test_dock_json import read, dock  # noqa: E402,F401
 
 
+def test_health_is_a_path_the_server_answers_itself():
+    assert f"path == '{dock()['health']}'" in read('server.py')
+
+
 def test_the_icon_is_an_svg_in_this_repo():
     d = dock()
     assert d['icon'].endswith('.svg')
