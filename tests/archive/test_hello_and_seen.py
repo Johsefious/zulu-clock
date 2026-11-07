@@ -1,3 +1,4 @@
+# Flagged for the reviewer, reason: endpoint (docs/code-map.md Endpoints: GET /__clock/hello and GET /__clock/seen (server.py), including the foreign-Host 403)
 """server.py tells a clock page which run of the server it is talking to, and tells the launcher whether a page has checked in.
 
 GET /__clock/hello answers {"boot": <id of this run>, "mode": <launch mode or null>} and notes that a page checked in.
