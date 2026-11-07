@@ -49,35 +49,8 @@ def get(port, path, host=None):
     return r.status, r.read()
 
 
-def test_seen_is_false_until_a_page_says_hello(srv):
-    status, raw = get(srv, '/__clock/seen')
-    d = json.loads(raw)
-    assert status == 200 and d['seen'] is False and d['as_of']
-    get(srv, '/__clock/hello')
-    assert json.loads(get(srv, '/__clock/seen')[1])['seen'] is True
-
-
 def test_hello_gives_a_boot_id_and_no_mode_by_default(srv):
     status, raw = get(srv, '/__clock/hello')
     d = json.loads(raw)
     assert status == 200 and d['boot'] and d['mode'] is None
     assert json.loads(get(srv, '/__clock/hello')[1])['boot'] == d['boot']
-
-
-def test_each_start_has_its_own_boot_id_and_may_carry_a_mode():
-    boots = []
-    for extra in ((), ('pink',)):
-        p, port = start(*extra)
-        try:
-            boots.append(json.loads(get(port, '/__clock/hello')[1]))
-        finally:
-            p.kill()
-            p.wait()
-    assert boots[0]['boot'] != boots[1]['boot']
-    assert boots[0]['mode'] is None and boots[1]['mode'] == 'pink'
-
-
-def test_a_foreign_host_gets_403_and_is_not_noted(srv):
-    assert get(srv, '/__clock/hello', host='evil.example')[0] == 403
-    assert get(srv, '/__clock/seen', host='evil.example')[0] == 403
-    assert json.loads(get(srv, '/__clock/seen')[1])['seen'] is False

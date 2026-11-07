@@ -74,6 +74,23 @@
         "date": "2026.11.02",
         "why": "These tests guard the Host check, the served-file list and the field cuts the Endpoints section names; a silent break would leak mission members, plan links or reporter contacts. Dropped: the own-host test (other tests already get 200 on 127.0.0.1, and a refused localhost breaks the page where anyone would see it) and the no-cache test (it rests on a decisions.md entry, not an endpoint)."
       }
+    },
+    {
+      "file": "tests/suite/test_hello_and_seen.py",
+      "reason": "endpoint",
+      "source": "docs/code-map.md, Endpoints: GET /__clock/hello and GET /__clock/seen (server.py), plus the OWN_HOSTS 403 refusal",
+      "added": "2026.11.06",
+      "names": [
+        "test_seen_is_false_until_a_page_says_hello",
+        "test_each_start_has_its_own_boot_id_and_may_carry_a_mode",
+        "test_a_foreign_host_gets_403_and_is_not_noted"
+      ],
+      "reviewed": {
+        "by": "repo suite",
+        "model": "claude-opus-5-5",
+        "date": "2026.11.06",
+        "why": "No suite test covers hello or seen. Three tests guard the contract: seen flips only after a hello, each run gets its own boot id and carries the launch mode, and a foreign Host is refused without being counted as a hello. The boot-id/no-mode test mostly overlaps the per-start test, so it goes to the archive."
+      }
     }
   ]
 }
