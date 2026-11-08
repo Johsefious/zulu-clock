@@ -25,12 +25,12 @@ def start(*extra):
     port = take_port()
     p = subprocess.Popen([sys.executable, os.path.join(ROOT, 'server.py'), str(port), ROOT, *extra],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(50):
+    for _ in range(500):
         try:
             http.client.HTTPConnection('127.0.0.1', port, timeout=1).request('GET', '/status')
             break
         except OSError:
-            time.sleep(0.1)
+            time.sleep(0.01)
     return p, port
 
 
