@@ -10,36 +10,47 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
+from functools import partial
+from http.server import ThreadingHTTPServer
 
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, ROOT)
+import server  # noqa: E402
 
 
 def take_port():
     return int(subprocess.run(['port', 'take'], capture_output=True, text=True, check=True).stdout.strip())
 
 
-def start(*extra):
+def spawn(*extra):
     port = take_port()
     p = subprocess.Popen([sys.executable, os.path.join(ROOT, 'server.py'), str(port), ROOT, *extra],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return p, port
+
+
+def wait_up(port):
     for _ in range(500):
         try:
             http.client.HTTPConnection('127.0.0.1', port, timeout=1).request('GET', '/status')
             break
         except OSError:
             time.sleep(0.01)
-    return p, port
 
 
 @pytest.fixture
-def srv():
-    p, port = start()
-    yield port
-    p.kill()
-    p.wait()
+def srv(monkeypatch):
+    """The real Handler in this process, as a fresh start: no page has said hello yet."""
+    monkeypatch.setattr(server, 'page_seen', False)
+    httpd = ThreadingHTTPServer(('127.0.0.1', 0), partial(server.Handler, directory=ROOT))
+    threading.Thread(target=httpd.serve_forever, kwargs={'poll_interval': 0.01}, daemon=True).start()
+    yield httpd.server_port
+    httpd.shutdown()
+    httpd.server_close()
 
 
 def get(port, path, host=None):
@@ -58,12 +69,15 @@ def test_seen_is_false_until_a_page_says_hello(srv):
 
 
 def test_each_start_has_its_own_boot_id_and_may_carry_a_mode():
+    # Two real processes: a boot id belongs to a run of the process. Started together, so they boot side by side.
+    started = [spawn(*extra) for extra in ((), ('pink',))]
     boots = []
-    for extra in ((), ('pink',)):
-        p, port = start(*extra)
-        try:
+    try:
+        for p, port in started:
+            wait_up(port)
             boots.append(json.loads(get(port, '/__clock/hello')[1]))
-        finally:
+    finally:
+        for p, _ in started:
             p.kill()
             p.wait()
     assert boots[0]['boot'] != boots[1]['boot']
