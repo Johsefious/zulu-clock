@@ -68,7 +68,10 @@ zulu-clock/
 - **Weather and moon.** Open-Meteo and Aviation Weather through `/source/`; the moon is computed in the page (`getMoonPhaseData`), no source.
 - **Clocks and Christmas.** `clockFace` picks what the clock block shows: Zulu big (`zuluTime`) with `LOCAL` and this device's time (`localClock`) small under it in green and blue, the two swapped in pink. In pink mode the SA panel shows the days and hours until Christmas (`christmasItem`, from `untilChristmas`: real time to local midnight on 25 December, redrawn each minute so it changes on the hour), computed in the page, no source.
 - **Headlines.** Google News World, US and CA through `/source/` (`loadHeadlines`).
-- **SA panel.** USGS, NWS, NHC, NASA EONET, NIFC, WHO and NOAA SWPC through `/source/` (`saFetch*`, listed by `saBuild`). The panel shows only what the sources report on the latest refresh; nothing is kept after a source drops an alert. A double-click on the alert card (`saDismissCurrent`) hides it until the page is reloaded; the hidden list (`saDismissed`) is in the page's memory only, so nothing is stored. Tests: `tests/archive/test_sa_live_and_dismiss.py`. A source that fails is told apart from one that answered with no alerts (`saFailed`); when more than half fail (`saIsDegraded`) the panel retries on `launchWithRetry`'s schedule.
+- **SA panel.** USGS, NWS, NHC, NASA EONET, NIFC, WHO and NOAA SWPC through `/source/` (`saFetch*`, listed by `saBuild`).
+  - The panel shows only what the sources report on the latest refresh; nothing is kept after a source drops an alert.
+  - A double-click on the alert card (`saDismissCurrent`) hides it until the page is reloaded; the hidden list (`saDismissed`) is in the page's memory only, so nothing is stored. Tests: `tests/archive/test_sa_live_and_dismiss.py`.
+  - A source that fails is told apart from one that answered with no alerts (`saFailed`); when more than half fail (`saIsDegraded`) the panel retries on `launchWithRetry`'s schedule.
 - **Feed text.** Text from outside feeds goes into `innerHTML` only through `esc` (`zulu-clock.js:esc`); a feed link is kept only when it is http or https (`httpOnly`). Tests: `tests/archive/test_feed_text_is_text.py`, `test_server_leaks.py`.
 - **Mode.** The last colour mode picked is kept in the page's localStorage under `zulu-mode` (`zulu-clock.js:nextMode`). **A write that does not go through an endpoint.** The inline script in `zulu-clock.html`'s `<head>` reads `?mode=` from the address first, then that key. `launch.sh` passes a mode to `server.py` as its third argument, and `/__clock/hello` hands it to an open page, which reloads on it.
 - **Other apps' ports.** Presser's and cmd fs's addresses come from `port home presser` and `port home cmd-fs` on each call (`server.py:home_port`, `address`); a failed lookup shows as that source failing in `/status`. No port is typed in the code; `dock.json` names the clock's Ports entry (`"port": {"ports": "zulu-clock"}`), docks asks `port home` for the number, and the suite checks the fills against it.
@@ -99,7 +102,11 @@ Reads, all GET:
 
 ## Release
 
-`repo release <this folder>` runs app.json's `release` step (`tools/release_step.py`), adds the shared Ports and Docks tools in `Files/shared/` with `install-shared.sh`, and writes `dist/Zulu Clock <version>.zip`. The zip holds `Install Zulu Clock.command`, `Read me.txt` and `Files/`. The installer installs the shared tools (only if missing or older), copies `Files/` to `~/Applications/Zulu Clock`, has the installed Docks make the app, and checks `/status` and the page. `server.py:home_port` looks for the Ports tool at `~/Library/Application Support/Ports/tool/port` first (`server.py:INSTALLED_PORT`), then the PATH, then Homebrew's. Tests: `tests/archive/test_release_zip.py`. <!-- pointers: ignore -->
+`repo release <this folder>` runs app.json's `release` step (`tools/release_step.py`), adds the shared Ports and Docks tools in `Files/shared/` with `install-shared.sh`, and writes `dist/Zulu Clock <version>.zip`. The zip holds `Install Zulu Clock.command`, `Read me.txt` and `Files/`. <!-- pointers: ignore -->
+
+The installer installs the shared tools (only if missing or older), copies `Files/` to `~/Applications/Zulu Clock`, has the installed Docks make the app, and checks `/status` and the page. <!-- pointers: ignore -->
+
+`server.py:home_port` looks for the Ports tool at `~/Library/Application Support/Ports/tool/port` first (`server.py:INSTALLED_PORT`), then the PATH, then Homebrew's. Tests: `tests/archive/test_release_zip.py`. <!-- pointers: ignore -->
 
 ## Tests
 How tests run, where they live and how runs are recorded: the testing skill.
