@@ -185,3 +185,19 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 - **Why:** every app's zip is built the one way (the release standard in the repo-master skill). The clock has no key, setting or data of its own, so nothing private belongs in the zip.
 - **By:** Joe's release standard; Claude built it
 - **Status:** active
+
+## The page shrinks itself to fit the window
+- **Date:** 2026-11-15
+- **Decided:** `fitPage` shrinks the whole page (a CSS `zoom` on `.shell`, `--fit`) until the ticker ends inside the window, and goes back to full size when there is room. It never goes below 0.3.
+- **Against:** letting the page scroll (the ticker would be off screen), or shrinking only the Press and Missions cards (a zoomed-in width also moves the weather and zone rows, so no one section accounts for the overflow).
+- **Why:** zooming the browser in cut off about the bottom tenth of the ticker, because every section kept its size while the window got shorter.
+- **By:** Joe asked for a better reflow; Claude chose the method
+- **Status:** active
+
+## Pink mode puts a Christmas headline after every news headline
+- **Date:** 2026-11-15
+- **Decided:** in pink mode the ticker alternates the 30 news headlines with 30 Christmas ones from a Google News search (`news-xmas`, a new source in `server.py:SOURCES` so `/status` reports it on its own), 60 in all. Other modes never ask for it.
+- **Against:** a hard-coded list of Christmas lines, or fetching the feed in every mode (a failure would show in `/status` for a feed nobody is looking at).
+- **Why:** Joe wants the ticker to feel like Christmas in pink mode; a real search keeps the lines current.
+- **By:** Joe; Claude built it
+- **Status:** active

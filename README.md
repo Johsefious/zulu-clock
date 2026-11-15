@@ -24,7 +24,7 @@ The clock has a Dock icon; `docks app list` shows its entry.
 
 Opening `zulu-clock.html` directly (`open zulu-clock.html`) shows the time, time zones and moon only, because the rest comes through `server.py`.
 
-Click the moon or press `M` to change mode. Pink mode shows the days and hours until Christmas in place of the alerts. Full screen: Safari `⌘ Ctrl F`, Chrome `⌘ Shift F` or F11.
+Click the moon or press `M` to change mode. Pink mode shows the days and hours until Christmas in place of the alerts, and every other ticker headline is about Christmas. The clock shrinks to fit when the browser is zoomed in. Full screen: Safari `⌘ Ctrl F`, Chrome `⌘ Shift F` or F11.
 
 Missions come from cmd fs's router. To point the clock somewhere else, set `MISSIONS_CALL`: `MISSIONS_CALL=http://127.0.0.1:<port> ./launch.sh`.
 
