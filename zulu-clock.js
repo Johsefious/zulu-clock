@@ -659,7 +659,7 @@
   // ─────────────────────────────────────────────────────────────
   const tickerEl   = document.getElementById('ticker-inner');
   const tickerWrap = document.querySelector('.ticker');
-  let   tickerX        = window.innerWidth;
+  let   tickerX        = tickerWrap.clientWidth;
   let   tickerPaused   = false;
   let   tickerVelocity = 0;              // eases from 0 → TICKER_PX_PER_FRAME on resume
   let   tickerResumeTimer = null;
@@ -719,7 +719,7 @@
     e.preventDefault();
     const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     tickerX -= delta * 2.5;
-    tickerX  = Math.min(window.innerWidth, tickerX);
+    tickerX  = Math.min(tickerWrap.clientWidth, tickerX);
     tickerPaused = true;
     clearTimeout(tickerResumeTimer);
     tickerResumeTimer = setTimeout(() => { tickerPaused = false; }, 1500);
@@ -732,7 +732,7 @@
     if (!tickerPaused) {
       tickerVelocity += (TICKER_PX_PER_FRAME - tickerVelocity) * 0.1;
       tickerX -= tickerVelocity;
-      if (tickerX < -tickerEl.scrollWidth) tickerX = window.innerWidth;
+      if (tickerX < -tickerEl.scrollWidth) tickerX = tickerWrap.clientWidth;
     } else {
       tickerVelocity = 0;
     }
@@ -1464,6 +1464,31 @@
   launchWithRetry(fetchAllSunsets,() => false,               6 * 60 * 60 * 1000);
   launchWithRetry(loadHeadlines,  () => intelFeedDegraded,   NEWS_REFRESH_MS,  800);
   launchWithRetry(loadSitAware,   () => saDegraded,          SA_REFRESH_MS,    1200);
+
+  // Fit the whole page to the window. Zooming the browser in leaves fewer CSS pixels, so the sections add up taller
+  // than the window and the ticker at the bottom was cut off. Shrink everything together (--fit, a CSS zoom on
+  // .shell) until the ticker ends inside the window. Starts again from 1 each time, so zooming back out or fewer
+  // cards grows it back; the end state is the same each time, so the resize observers settle.
+  const FIT_MIN = 0.3;
+  function fitPage() {
+    const shell = document.querySelector('.shell');
+    const last  = shell && shell.lastElementChild;
+    if (!last) return;
+    let fit = 1;
+    shell.style.setProperty('--fit', fit);
+    for (let i = 0; i < 12; i++) {
+      const bottom = last.getBoundingClientRect().bottom;
+      if (bottom <= window.innerHeight + 0.5 || fit <= FIT_MIN) break;
+      fit = Math.max(FIT_MIN, fit * Math.min(0.98, window.innerHeight / bottom));
+      shell.style.setProperty('--fit', fit);
+    }
+    if (fit === 1) shell.style.removeProperty('--fit');
+  }
+  fitPage();
+  window.addEventListener('resize', fitPage);
+  const fitObserver = new ResizeObserver(fitPage);
+  ['.zulu-block', '.tz-row', '.wx-section', '#press', '#missions']
+    .forEach(s => fitObserver.observe(document.querySelector(s)));
   launchWithRetry(loadPress,      () => false,               PRESS_REFRESH_MS, 1500);
   launchWithRetry(loadMissions,   () => false,               MISSIONS_REFRESH_MS, 1700);
   setInterval(loadStatus, STATUS_REFRESH_MS);
