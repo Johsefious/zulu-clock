@@ -119,6 +119,10 @@
     { tag:'US',    cls:'ntag-us',    source:'news-us',    query:'hl=en&gl=US&ceid=US:en' },
     { tag:'CA',    cls:'ntag-ca',    source:'news-ca',    query:'q=california+news&hl=en&gl=US&ceid=US:en' },
   ];
+  const NEWS_PER_FEED = 10;
+  // Pink mode only: every other ticker headline is about Christmas (30 of them beside the 30 news ones).
+  const XMAS_FEED = { tag:'XMAS', cls:'ntag-xmas', source:'news-xmas', query:'q=christmas&hl=en&gl=US&ceid=US:en',
+                      limit: 3 * NEWS_PER_FEED };
   const WX_REFRESH_MS   = 20 * 60 * 1000;
   const NEWS_REFRESH_MS = 5  * 60 * 1000;
   const SA_REFRESH_MS   = 4  * 60 * 1000;  // sit-aware: 4 min
@@ -135,6 +139,7 @@
   let   sunsetDegraded   = false;
   let   wxAlerts         = [];
   let   currentHeadlines = [];
+  let   currentXmas      = [];     // pink mode's Christmas headlines; empty until pink mode has loaded them
   let   saDegraded       = false;
   let   saAlerts         = [];
   let   saIdx            = 0;
@@ -706,11 +711,21 @@
     }).join('');
   }
 
+  // The news with a Christmas headline after each one; the longer list carries on alone when the other runs out.
+  function withChristmas(news, xmas) {
+    const out = [];
+    for (let i = 0; i < Math.max(news.length, xmas.length); i++) {
+      if (i < news.length) out.push(news[i]);
+      if (i < xmas.length) out.push(xmas[i]);
+    }
+    return out;
+  }
+
   function rebuildTicker() {
     const saHtml   = buildSaTickerHTML(saAlerts);
     const wxHtml   = buildWxAlertHTML(wxAlerts);
     const newsHtml = currentHeadlines.length
-      ? buildNewsHTML(currentHeadlines) + buildSysHTML(false)
+      ? buildNewsHTML(isPink() ? withChristmas(currentHeadlines, currentXmas) : currentHeadlines) + buildSysHTML(false)
       : buildSysHTML(true);
     tickerEl.innerHTML = saHtml + wxHtml + newsHtml;
   }
@@ -762,11 +777,11 @@
   // A feed's link is kept only when it is a web address, never javascript: or data:.
   function httpOnly(u) { u = (u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; }
 
-  function parseRssXml(xml) {
+  function parseRssXml(xml, limit = NEWS_PER_FEED) {
     const doc   = new DOMParser().parseFromString(xml, 'text/xml');
     // Guard against parse errors (DOMParser returns <parsererror> element)
     if (doc.querySelector('parsererror')) throw new Error('XML parse failed');
-    const nodes = [...doc.querySelectorAll('item')].slice(0, 10);
+    const nodes = [...doc.querySelectorAll('item')].slice(0, limit);
     if (!nodes.length) throw new Error('no <item> elements in feed');
     return nodes.map(el => ({
       title: sanitize((el.querySelector('title')?.textContent || '').replace(/ - [^-]+$/, '')),
@@ -776,7 +791,7 @@
 
   async function fetchFeed(feed) {
     const r = await fetchT(src(feed.source, feed.query), 15000);
-    return parseRssXml(await r.text()).map(i => ({ tag: feed.tag, cls: feed.cls, title: i.title, url: i.url }));
+    return parseRssXml(await r.text(), feed.limit).map(i => ({ tag: feed.tag, cls: feed.cls, title: i.title, url: i.url }));
   }
 
   function setFeedStatus(html) {
@@ -793,25 +808,31 @@
   async function loadHeadlines() {
     fetchCount++;
 
-    const results = await Promise.allSettled(RSS_FEEDS.map(fetchFeed));
-    const items   = results.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
+    // Pink mode also asks for the Christmas feed. It goes last so the news feeds keep their places, and it never
+    // counts toward the news being degraded: with it down the ticker shows the news alone.
+    const feeds   = isPink() ? RSS_FEEDS.concat(XMAS_FEED) : RSS_FEEDS;
+    const results = await Promise.allSettled(feeds.map(fetchFeed));
+    const news    = results.slice(0, RSS_FEEDS.length);
+    const xmas    = results[RSS_FEEDS.length];
+    const items   = news.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
     const failed  = results.filter(r => r.status === 'rejected');
 
     // Log per-feed failures with correct feed tag (by index, not indexOf)
     results.forEach((r, i) => {
       if (r.status === 'rejected')
-        console.error(`Feed [${RSS_FEEDS[i].tag}] failed:`, r.reason?.message);
+        console.error(`Feed [${feeds[i].tag}] failed:`, r.reason?.message);
     });
 
     nextNewsRefreshAt   = Date.now() + NEWS_REFRESH_MS;
     intelFeedDegraded   = (items.length === 0);
+    if (xmas && xmas.status === 'fulfilled') currentXmas = xmas.value;
 
     if (items.length > 0) {
       currentHeadlines = items;
       rebuildTicker();
       if (failed.length) console.warn(`${failed.length} feeds degraded — see console.`);
     } else {
-      console.error('All news feeds failed:', results.map((r,i) =>
+      console.error('All news feeds failed:', news.map((r,i) =>
         `[${RSS_FEEDS[i].tag}] ${r.reason?.message}`).join(' | '));
     }
     renderFeedStatus();
@@ -1375,6 +1396,8 @@
     try { localStorage.setItem('zulu-mode', mode); } catch {}
     saRenderItem(saAlerts[saIdx] || null);   // pink swaps alerts for the Christmas countdown
     saRenderDots();
+    rebuildTicker();                          // pink adds a Christmas headline after each one
+    if (mode === 'pink' && !currentXmas.length) loadHeadlines();   // the first time in pink: fetch them now
   }
   document.getElementById('moon-panel').addEventListener('click', nextMode);
   document.addEventListener('keydown', e => {
@@ -1441,29 +1464,6 @@
   fitSaPanel();
   new ResizeObserver(fitSaPanel).observe(document.querySelector('.zulu-center'));
   window.addEventListener('resize', fitSaPanel);
-  window.addEventListener('resize', () => { if (missionsData) missionsRender(); });   // press redraws every second anyway
-
-  // launchWithRetry: fires fn immediately (after initialDelayMs), then backs off
-  // through RETRY_MS if still degraded, finally handing off to setInterval at normalMs.
-  function launchWithRetry(fn, isStillDegraded, normalMs, initialDelayMs) {
-    const RETRY_MS = [6000, 18000, 45000, 120000];
-    const run = async () => { await fn(); loadStatus(); };
-    async function attempt(idx) {
-      await run();
-      if (isStillDegraded() && idx < RETRY_MS.length) {
-        setTimeout(() => attempt(idx + 1), RETRY_MS[idx]);
-      } else {
-        setInterval(run, normalMs);
-      }
-    }
-    if (initialDelayMs) setTimeout(() => attempt(0), initialDelayMs);
-    else attempt(0);
-  }
-
-  launchWithRetry(loadAllWx,      () => wxDegraded,         WX_REFRESH_MS);
-  launchWithRetry(fetchAllSunsets,() => false,               6 * 60 * 60 * 1000);
-  launchWithRetry(loadHeadlines,  () => intelFeedDegraded,   NEWS_REFRESH_MS,  800);
-  launchWithRetry(loadSitAware,   () => saDegraded,          SA_REFRESH_MS,    1200);
 
   // Fit the whole page to the window. Zooming the browser in leaves fewer CSS pixels, so the sections add up taller
   // than the window and the ticker at the bottom was cut off. Shrink everything together (--fit, a CSS zoom on
@@ -1489,6 +1489,29 @@
   const fitObserver = new ResizeObserver(fitPage);
   ['.zulu-block', '.tz-row', '.wx-section', '#press', '#missions']
     .forEach(s => fitObserver.observe(document.querySelector(s)));
+  window.addEventListener('resize', () => { if (missionsData) missionsRender(); });   // press redraws every second anyway
+
+  // launchWithRetry: fires fn immediately (after initialDelayMs), then backs off
+  // through RETRY_MS if still degraded, finally handing off to setInterval at normalMs.
+  function launchWithRetry(fn, isStillDegraded, normalMs, initialDelayMs) {
+    const RETRY_MS = [6000, 18000, 45000, 120000];
+    const run = async () => { await fn(); loadStatus(); };
+    async function attempt(idx) {
+      await run();
+      if (isStillDegraded() && idx < RETRY_MS.length) {
+        setTimeout(() => attempt(idx + 1), RETRY_MS[idx]);
+      } else {
+        setInterval(run, normalMs);
+      }
+    }
+    if (initialDelayMs) setTimeout(() => attempt(0), initialDelayMs);
+    else attempt(0);
+  }
+
+  launchWithRetry(loadAllWx,      () => wxDegraded,         WX_REFRESH_MS);
+  launchWithRetry(fetchAllSunsets,() => false,               6 * 60 * 60 * 1000);
+  launchWithRetry(loadHeadlines,  () => intelFeedDegraded,   NEWS_REFRESH_MS,  800);
+  launchWithRetry(loadSitAware,   () => saDegraded,          SA_REFRESH_MS,    1200);
   launchWithRetry(loadPress,      () => false,               PRESS_REFRESH_MS, 1500);
   launchWithRetry(loadMissions,   () => false,               MISSIONS_REFRESH_MS, 1700);
   setInterval(loadStatus, STATUS_REFRESH_MS);

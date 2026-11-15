@@ -45,6 +45,7 @@ SOURCES = {
     'news-world': ('Google News World', 'headlines', 'https://news.google.com/rss/headlines/section/topic/WORLD'),
     'news-us':    ('Google News US', 'headlines', 'https://news.google.com/rss/headlines/section/topic/NATION'),
     'news-ca':    ('Google News CA', 'headlines', 'https://news.google.com/rss/search'),
+    'news-xmas':  ('Google News Christmas', 'pink mode headlines', 'https://news.google.com/rss/search'),
     'usgs':       ('USGS', 'earthquakes', 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson'),
     'nws':        ('NWS', 'CA weather alerts', 'https://api.weather.gov/alerts/active'),
     'nhc':        ('NHC', 'tropical storms', 'https://www.nhc.noaa.gov/CurrentStorms.json'),
