@@ -263,20 +263,29 @@
              smallLbl: 'LOCAL', small: local.time };
   }
 
-  // Whole days from today in `zone` to the next 25 December (0 on the day).
-  function daysUntilChristmas(now, zone) {
+  // Time from `now` to the start of the next 25 December in `zone` (its local midnight): whole days and whole
+  // hours, counted in real elapsed time so a clock change on the way is included. `today` on the day itself.
+  function untilChristmas(now, zone) {
     const t = zoneParts(now, zone);
-    const today = Date.UTC(t.y, t.mo, t.d);
-    let xmas = Date.UTC(t.y, 11, 25);
-    if (xmas < today) xmas = Date.UTC(t.y + 1, 11, 25);
-    return Math.round((xmas - today) / 86400000);
+    if (t.mo === 11 && t.d === 25) return { today: true, days: 0, hours: 0, year: t.y };
+    const year = t.mo === 11 && t.d > 25 ? t.y + 1 : t.y;
+    const naive = Date.UTC(year, 11, 25);   // 25 Dec 00:00 as if the zone were UTC
+    const at = zoneParts(new Date(naive), zone);
+    const offset = Date.UTC(at.y, at.mo, at.d, at.h, at.mi, at.s) - naive;   // the zone's offset from UTC in December
+    const hours = Math.floor((naive - offset - now.getTime()) / 3600000);
+    return { days: Math.floor(hours / 24), hours: hours % 24, year };
   }
 
-  // Pink mode's card in the alert panel.
+  // Pink mode's card in the alert panel: days and hours, so it changes every hour.
   function christmasItem(now, zone) {
-    const n = daysUntilChristmas(now, zone), t = zoneParts(now, zone);
-    const x = new Date(Date.UTC(t.y, t.mo, t.d) + n * 86400000);
-    return { cat: 'DAYS UNTIL CHRISTMAS', headline: n === 0 ? 'CHRISTMAS DAY' : n === 1 ? '1 DAY' : `${n} DAYS`,
+    const u = untilChristmas(now, zone);
+    const x = new Date(Date.UTC(u.year, 11, 25));
+    const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 'S'}`;
+    const headline = u.today ? 'CHRISTMAS DAY'
+      : u.days === 0 && u.hours === 0 ? 'LESS THAN 1 HOUR'
+      : u.days === 0 ? plural(u.hours, 'HOUR')
+      : `${plural(u.days, 'DAY')} ${plural(u.hours, 'HOUR')}`;
+    return { cat: 'TIME UNTIL CHRISTMAS', headline,
              detail: `${DAYS[x.getUTCDay()]}   ${pad(x.getUTCDate())} ${MONS[x.getUTCMonth()]} ${x.getUTCFullYear()}` };
   }
 
@@ -462,7 +471,7 @@
     document.getElementById('small-lbl').textContent   = face.smallLbl;
     document.getElementById('small-time').textContent  = face.small;
 
-    // Pink mode's Christmas countdown turns over at local midnight
+    // Pink mode's Christmas countdown is redrawn each minute, so it changes on the hour
     if (now.getSeconds() === 0 && isPink()) saRenderItem(null);
 
     // Zones
@@ -1028,7 +1037,7 @@
                       : saClearSources().map(s => s.label.toUpperCase()).join(' · ');
   }
 
-  // Pink mode shows no alerts: a snowflake and the days until Christmas instead.
+  // Pink mode shows no alerts: a snowflake and the days and hours until Christmas instead.
   function isPink() { return document.documentElement.dataset.mode === 'pink'; }
 
   function saRenderItem(alert) {
