@@ -44,7 +44,7 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 
 ## Pink mode counts down to Christmas instead of showing alerts
 - **Date:** 2026-10-29
-- **Decided:** in pink mode the SA panel shows no disasters, only a snowflake and the days until Christmas (local date). The SA sources are still called, so other modes show alerts at once.
+- **Decided:** in pink mode the SA panel shows no disasters, only a snowflake and the days and hours until Christmas (to local midnight on 25 December; changed from whole days on 2026-11-15 so the card updates every hour). The SA sources are still called, so other modes show alerts at once.
 - **Against:** pink differing from the other modes only in colour.
 - **Why:** Joe asked for pink mode without disasters.
 - **By:** Joe
