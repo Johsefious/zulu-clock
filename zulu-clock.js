@@ -1395,6 +1395,55 @@
   }
 
   // ─────────────────────────────────────────────────────────────
+  //  SNOW — pink mode only: faint flakes drift down on a canvas behind the content. Decoration, no data.
+  // ─────────────────────────────────────────────────────────────
+  const SNOW_PER_PIXEL = 1 / 16000;   // about 90 flakes on a 1512x982 window
+  let snowFlakes = [], snowFrame = 0, snowLast = 0;
+  const snowCanvas = document.getElementById('snow');
+  const snowCtx    = snowCanvas.getContext('2d');
+
+  function snowFlake(w, h, anywhere) {
+    return { x: Math.random() * w, y: anywhere ? Math.random() * h : -6, r: 1 + Math.random() * 1.8,
+             vy: 12 + Math.random() * 22,                 // px per second: slow
+             sway: 8 + Math.random() * 14, phase: Math.random() * 6.28, alpha: 0.2 + Math.random() * 0.25 };
+  }
+
+  function snowResize() {
+    const w = snowCanvas.width = window.innerWidth, h = snowCanvas.height = window.innerHeight;
+    const n = Math.round(w * h * SNOW_PER_PIXEL);
+    snowFlakes = Array.from({ length: n }, () => snowFlake(w, h, true));
+  }
+
+  function snowDraw(t) {
+    const w = snowCanvas.width, h = snowCanvas.height;
+    const dt = Math.min(0.1, (t - snowLast) / 1000 || 0);   // a hidden tab's long gap does not jump the flakes
+    snowLast = t;
+    snowCtx.clearRect(0, 0, w, h);
+    snowFlakes.forEach((f, i) => {
+      f.y += f.vy * dt;
+      if (f.y > h + 6) snowFlakes[i] = f = snowFlake(w, h, false);
+      const x = f.x + Math.sin(t / 1800 + f.phase) * f.sway;
+      snowCtx.fillStyle = `rgba(255,255,255,${f.alpha})`;
+      snowCtx.beginPath();
+      snowCtx.arc(x, f.y, f.r, 0, 6.2832);
+      snowCtx.fill();
+    });
+    snowFrame = requestAnimationFrame(snowDraw);
+  }
+
+  // Run in pink mode, stop (and clear) in the others; called on each mode change and at the start.
+  function snowSync() {
+    cancelAnimationFrame(snowFrame);
+    snowFrame = 0;
+    const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;   // no motion asked for
+    if (!isPink() || still) { snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height); return; }
+    snowResize();
+    snowLast = performance.now();
+    snowFrame = requestAnimationFrame(snowDraw);
+  }
+  window.addEventListener('resize', () => { if (snowFrame) snowResize(); });
+
+  // ─────────────────────────────────────────────────────────────
   //  MODES — green, pink, blue. Click the moon or press M for the next one.
   // ─────────────────────────────────────────────────────────────
   const MODES = ['green', 'pink', 'blue'];
@@ -1407,6 +1456,7 @@
     saRenderItem(saAlerts[saIdx] || null);   // pink swaps alerts for the Christmas countdown
     saRenderDots();
     rebuildTicker();                          // pink adds a Christmas headline after each one
+    snowSync();                               // pink also drifts snow behind the content
     if (mode === 'pink' && !currentXmas.length) loadHeadlines();   // the first time in pink: fetch them now
   }
   document.getElementById('moon-panel').addEventListener('click', nextMode);
@@ -1495,6 +1545,7 @@
     if (fit === 1) shell.style.removeProperty('--fit');
   }
   fitPage();
+  snowSync();   // the page can open in pink mode
   window.addEventListener('resize', fitPage);
   const fitObserver = new ResizeObserver(fitPage);
   ['.zulu-block', '.tz-row', '.wx-section', '#press', '#missions']
