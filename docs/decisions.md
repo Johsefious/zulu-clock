@@ -201,3 +201,19 @@ Append-only, newest last. One entry per settled decision with Date, Decided, Aga
 - **Why:** Joe wants the ticker to feel like Christmas in pink mode; a real search keeps the lines current.
 - **By:** Joe; Claude built it
 - **Status:** active
+
+## Clicking the Christmas countdown swaps its days and hours
+- **Date:** 2026-11-15
+- **Decided:** in pink mode a click on the countdown card turns `39 DAYS 7 HOURS` into `7 HOURS 39 DAYS`, and the next click turns it back. The choice lives in the page's memory only, so a reload starts days first. With no days left there is nothing to swap.
+- **Against:** remembering the choice in localStorage, or a separate button.
+- **Why:** Joe wants to read the hours first at a glance; a stored choice would be one more thing to explain for a toggle.
+- **By:** Joe; Claude built it
+- **Status:** active
+
+## Faint snow falls behind the clock in pink mode only
+- **Date:** 2026-11-15
+- **Decided:** pink mode draws slow, faint snowflakes on a canvas behind the content. Green, blue and a browser set to reduced motion show none. It is decoration with no source, so `/status` has nothing to report for it.
+- **Against:** snow in every mode, or flakes in front of the content.
+- **Why:** Joe asked for subtle snow; pink is the Christmas mode, and flakes behind the content never cover the numbers.
+- **By:** Joe; Claude built it
+- **Status:** active

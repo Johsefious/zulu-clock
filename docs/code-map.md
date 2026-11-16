@@ -56,6 +56,7 @@ zulu-clock/
 | SITUATIONAL AWARENESS | the `saFetch*` fetchers (a failed one returns `saFailed()`), `saIsDegraded`, `saBuild`, `saDismissCurrent` and the SA panel |
 | PRESS | `loadPress`, `pressRender` |
 | MISSIONS | `loadMissions`, `missionsRender` |
+| SNOW | `snowSync`: pink mode's faint falling snowflakes on the `#snow` canvas behind the content |
 | MODES | green, pink, blue; the moon click and the M key |
 | START | first paint, `onTheSecond` (the once-a-second tick, lined up with the turn of each second) and `launchWithRetry` for each loader (retries at 6, 18, 45 and 120 s while a loader reports itself degraded, then its normal interval), the heartbeat (`heartbeatStep`): every 2 s it says hello and reloads the page when the server's boot id changes, and `fitPage` (Data flow, Fit to the window) |
 
@@ -67,6 +68,8 @@ zulu-clock/
 - **Status.** `server.py:call` records how each distinct call went; `/status` reports it per source (`server.py:status`). The page prints every status word from `/status` (`zulu-clock.js:renderStatus`).
 - **Weather and moon.** Open-Meteo and Aviation Weather through `/source/`; the moon is computed in the page (`getMoonPhaseData`), no source.
 - **Clocks and Christmas.** `clockFace` picks what the clock block shows: Zulu big (`zuluTime`) with `LOCAL` and this device's time (`localClock`) small under it in green and blue, the two swapped in pink. In pink mode the SA panel shows the days and hours until Christmas (`christmasItem`, from `untilChristmas`: real time to local midnight on 25 December, redrawn each minute so it changes on the hour), computed in the page, no source.
+  - A click on the card flips the order, `39 DAYS 7 HOURS` to `7 HOURS 39 DAYS` and back (`xmasHoursFirst`, the third argument of `christmasItem`; in the page's memory only, so a reload starts days first). Tests: `tests/archive/test_christmas_countdown_click_swaps.py`.
+- **Snow.** In pink mode `snowSync` draws about one flake per 16,000 px² on the `#snow` canvas (`zulu-clock.html`, a fixed layer at z-index 0 under `.shell`, no clicks), drifting down with `requestAnimationFrame`. Other modes, and a browser asking for reduced motion, show none. Decoration only, no source. Tests: `tests/archive/test_pink_snowflakes.py`.
 - **Headlines.** Google News World, US and CA through `/source/` (`loadHeadlines`), 10 each. In pink mode `loadHeadlines` also asks `news-xmas` (a Google News search for Christmas, 30 kept) and `rebuildTicker` puts one after each news headline (`withChristmas`): 60 in all. The other modes never call it; the first switch to pink loads it (`nextMode`). With it down the ticker shows the news alone, and `/status` names it. Tests: `tests/archive/test_pink_christmas_headlines.py`.
 - **Fit to the window.** `fitPage` starts from `--fit` 1 and, while the ticker ends below the window (a zoomed-in browser leaves fewer CSS pixels), shrinks `--fit`, a CSS `zoom` on `.shell` whose height grows to match (never below 0.3). It runs on load, on resize and when the clock block, zone row, weather, Press or Missions change size. The ticker's width comes from its own box (`tickerWrap.clientWidth`), not the window's. Tests: `tests/archive/test_zoomed_page_fits_screen.py`.
 - **SA panel.** USGS, NWS, NHC, NASA EONET, NIFC, WHO and NOAA SWPC through `/source/` (`saFetch*`, listed by `saBuild`).
