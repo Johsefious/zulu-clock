@@ -9,7 +9,8 @@ from browser_page import browser, open_page  # noqa: F401  (browser is the fixtu
 from node_js import run_node
 from page_js import pick
 
-PURE = pick('snowFlurrySeed', 'snowFlurryRng', 'snowFlurryPlan', 'snowFlurryWind')
+PURE = pick('snowFlurrySeed', 'snowFlurryRng', 'snowFlurryBetween', 'snowFlurryFlake', 'snowFlurryPlan',
+            'snowFlurryWind')
 
 
 def node(expr):
@@ -49,14 +50,27 @@ def test_the_wind_swirls_and_changes_with_place_and_time():
     assert w[0] != w[1] and w[0] != w[2]
 
 
-# One snapshot of the snow canvas: the total opacity of what is drawn.
+# One snapshot of the snow canvas: the total opacity of what is in the air, leaving out the strips just above the cards'
+# top edges, where poured snow piles up and stays (it melts slowly).
 INK = """() => {
   const c = document.getElementById('snow');
   const g = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  const tops = [...document.querySelectorAll('.tz-card, .wx-card')].map(e => e.getBoundingClientRect())
+    .filter(r => r.width > 0);
   let a = 0;
-  for (let i = 3; i < g.length; i += 4) a += g[i];
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+    if (tops.some(r => x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 16 && y <= r.top + 1)) continue;
+    a += g[(y * c.width + x) * 4 + 3];
+  }
   return a;
 }"""
+
+
+def ready(page):
+    """The pink page with its loading screen gone (with no outside sources it waits 20 s, and covers the snowflake)."""
+    page.wait_for_selector('#sa-item .sa-symbol svg')
+    page.evaluate("() => document.getElementById('loader') && document.getElementById('loader').remove()")
+    page.wait_for_timeout(300)
 
 
 def ink(page, ms):
@@ -66,7 +80,7 @@ def ink(page, ms):
 
 def test_clicking_the_snowflake_starts_a_flurry_that_passes(browser):
     page = open_page(browser, 1512, 982, 'mode=pink')
-    page.wait_for_selector('#sa-item .sa-symbol svg')
+    ready(page)
     before = max(ink(page, 400) for _ in range(3))
     first = page.inner_text('#sa-item .sa-headline').strip()
     page.click('#sa-item .sa-symbol')
@@ -80,7 +94,7 @@ def test_clicking_the_snowflake_starts_a_flurry_that_passes(browser):
 
 def test_two_clicks_are_two_different_flurries(browser):
     page = open_page(browser, 1512, 982, 'mode=pink')
-    page.wait_for_selector('#sa-item .sa-symbol svg')
+    ready(page)
     seeds = []
     for _ in range(2):
         page.click('#sa-item .sa-symbol')
@@ -90,15 +104,28 @@ def test_two_clicks_are_two_different_flurries(browser):
     assert all(isinstance(s, (int, float)) for s in seeds) and seeds[0] != seeds[1], seeds
 
 
+def test_a_second_click_adds_to_the_blizzard_instead_of_resetting_it(browser):
+    page = open_page(browser, 1512, 982, 'mode=pink')
+    ready(page)
+    page.click('#sa-item .sa-symbol')
+    page.wait_for_timeout(1500)              # the first flurry is at its fullest
+    before = ink(page, 0)
+    page.click('#sa-item .sa-symbol')
+    after = ink(page, 150)
+    page.close()
+    assert after > before * 0.9, (before, after)   # nothing already falling was cut off
+
+
 def test_no_flurry_for_reduced_motion_or_outside_pink(browser):
     page = open_page(browser, 1512, 982, 'mode=pink')
-    page.wait_for_selector('#sa-item .sa-symbol svg')
+    ready(page)
     page.emulate_media(reduced_motion='reduce')
     before = ink(page, 300)
     page.click('#sa-item .sa-symbol')
     assert ink(page, 800) <= before * 1.2
     page.close()
     page = open_page(browser, 1512, 982, 'mode=green')
+    page.evaluate("() => document.getElementById('loader') && document.getElementById('loader').remove()")
     page.wait_for_timeout(500)
     page.click('#sa-item .sa-symbol')
     assert ink(page, 800) == 0

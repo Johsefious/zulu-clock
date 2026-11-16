@@ -1149,7 +1149,7 @@
   document.getElementById('sa-item').addEventListener('click', e => {
     if (!isPink()) return;
     const flake = e.target.closest('.sa-symbol');
-    if (flake) { snowFlurry(flake); return; }   // the snowflake starts a flurry; the rest of the card swaps the hours
+    if (flake) return;   // a press on the snowflake pours snow (snowFlurry); the rest of the card swaps the hours
     xmasHoursFirst = !xmasHoursFirst;
     saRenderItem(null);
   });
@@ -1433,33 +1433,43 @@
     };
   }
 
-  // What the seed deals: a steady lean of the wind, 2 to 4 swirls near the click, and 100 to 190 flakes that start in
-  // a puff around (cx, cy) over the first second or so and live 2.2 to 3.8 s. Pure; positions are in window pixels.
+  function snowFlurryBetween(rnd, lo, hi) { return lo + rnd() * (hi - lo); }
+
+  // One flake of a flurry, in a puff around (cx, cy), kicked outward; it lives 2.2 to 3.8 s. A flake of the pour
+  // from a held snowflake falls harder and lives 4 to 8 s, to reach the cards below. Pure; window pixels.
+  function snowFlurryFlake(rnd, cx, cy, pour) {
+    const between = (lo, hi) => snowFlurryBetween(rnd, lo, hi);
+    const a = between(0, 6.2832), d = between(0, 40), kick = between(40, 160);
+    return { x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, vx: Math.cos(a) * kick, vy: Math.sin(a) * kick,
+             life: pour ? between(4, 8) : between(2.2, 3.8), fall: pour ? between(70, 150) : between(25, 70),
+             r: between(1.2, 3.2), alpha: between(0.35, 0.75) };
+  }
+
+  // What the seed deals: a steady lean of the wind, 2 to 4 swirls near the click, and 100 to 190 flakes that come out
+  // over the first second or so. Pure; positions are in window pixels.
   function snowFlurryPlan(seed, w, h, cx, cy) {
     const rnd = snowFlurryRng(seed);
-    const between = (lo, hi) => lo + rnd() * (hi - lo);
-    const lean = between(-60, 60), lift = between(-15, 10);   // px per second
+    const between = (lo, hi) => snowFlurryBetween(rnd, lo, hi);
+    const lean = between(-40, 40), lift = between(-15, 10);   // px per second
     const swirls = Array.from({ length: 2 + Math.floor(rnd() * 3) }, () => ({
       x: cx + between(-0.35, 0.35) * w, y: cy + between(-0.3, 0.45) * h,
       r: between(120, 260),                                    // reach
       spin: (rnd() < 0.5 ? -1 : 1) * between(60, 140),         // px per second near the core, either way round
-      dx: between(-40, 40), dy: between(-20, 20),              // the swirl itself drifts
+      dx: between(-40, 40), dy: between(-20, 20),              // how far the swirl wanders from where it began
       pulse: between(0.8, 1.8), phase: between(0, 6.28) }));
-    const flakes = Array.from({ length: Math.round(between(100, 190)) }, () => {
-      const a = between(0, 6.2832), d = between(0, 40), kick = between(40, 160);
-      return { x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, vx: Math.cos(a) * kick, vy: Math.sin(a) * kick,
-               delay: rnd() * rnd() * 1.4, life: between(2.2, 3.8),
-               fall: between(25, 70), r: between(1.2, 3.2), alpha: between(0.35, 0.75) };
-    });
+    const flakes = Array.from({ length: Math.round(between(100, 190)) }, () =>
+      ({ ...snowFlurryFlake(rnd, cx, cy), delay: rnd() * rnd() * 1.4 }));
     return { lean, lift, swirls, flakes };
   }
 
   // The wind [wx, wy] (px per second) at a place and time (s): the lean plus each swirl, which turns the way round it
-  // spins, strongest about one reach out from its core, and breathes in and out as it drifts.
+  // spins, strongest about one reach out from its core, breathes in and out, and wanders about its place (never
+  // off, so a long hold stays in the same weather).
   function snowFlurryWind(plan, x, y, t) {
     let wx = plan.lean, wy = plan.lift;
     plan.swirls.forEach(s => {
-      const dx = x - (s.x + s.dx * t), dy = y - (s.y + s.dy * t);
+      const wander = Math.sin(t * 0.5 + s.phase) * 3;
+      const dx = x - (s.x + s.dx * wander), dy = y - (s.y + s.dy * wander);
       const breath = 0.7 + 0.3 * Math.sin(t * s.pulse + s.phase);
       const k = s.spin * breath * Math.exp(-(dx * dx + dy * dy) / (2 * s.r * s.r));
       wx -= dy / s.r * k;
@@ -1468,40 +1478,140 @@
     return [wx, wy];
   }
 
-  let snowBurst = null;   // the flurry under way: { plan, t0, flakes (live copies), end }
+  // Add `amount` of snow to column i of a pile (column heights, px) and let it slump: a column more than `repose`
+  // above a neighbour gives half its excess to it, and past the ends of a ledge it spills off, so a mound always
+  // has a slope, never a spike. Nothing stands taller than `cap`. Returns a new array. Pure.
+  function snowPileAdd(h, i, amount, repose, cap) {
+    const p = h.slice(), n = p.length;
+    p[i] += amount;
+    for (let pass = 0; pass < 400; pass++) {
+      let moved = false;
+      for (let j = 0; j < n; j++) {
+        for (const k of [j - 1, j + 1]) {
+          const off = k < 0 || k >= n;
+          const over = p[j] - (off ? 0 : p[k]) - repose;
+          if (over > 1e-9) {
+            p[j] -= over / 2;
+            if (!off) p[k] += over / 2;
+            moved = true;
+          }
+        }
+      }
+      if (!moved) break;
+    }
+    return p.map(v => Math.min(v, cap));
+  }
 
   function snowStill() {
     return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);   // no motion asked for
   }
 
-  function snowFlurry(symbolEl) {
-    if (!isPink() || snowStill() || !snowFrame) return;
-    const m = getMoonPhaseData(), seed = snowFlurrySeed(Date.now(), m.illum, m.waxing);
-    const box = symbolEl.getBoundingClientRect();
-    const plan = snowFlurryPlan(seed, snowCanvas.width, snowCanvas.height, box.left + box.width / 2,
-                                box.top + box.height / 2);
-    snowCanvas.dataset.flurry = seed;
-    snowBurst = { plan, t0: performance.now(), flakes: plan.flakes.map(f => ({ ...f })),
-                  end: Math.max(...plan.flakes.map(f => f.delay + f.life)) };
+  // Flurry flakes (not the faint ambient ones) fall past nothing: they land on the top edge of a card and pile up.
+  // A pile's columns, in px: width, steepest step between neighbours, tallest, and how much melts each second.
+  const SNOW_BIN = 4, SNOW_REPOSE = 1.5, SNOW_CAP = 14, SNOW_MELT = 0.12;
+  // A held snowflake pours this many flakes a second, for at most this many seconds; flakes in the air never pass this.
+  const SNOW_POUR_PER_S = 70, SNOW_POUR_MAX_S = 30, SNOW_AIR_MAX = 700;
+  let snowAir = [];                // flurry flakes in the air: the flake, its plan and when it comes out (ms)
+  const snowHolds = new Map();     // pointer id -> { plan, rnd, cx, cy, next } for each press held on the snowflake
+  const snowPiles = new Map();     // ledge (where its card is) -> the heights of its pile's columns
+  let snowLedges = [], snowLedgesAt = -1e9, snowPiled = false;
+
+  // The cards' top edges, read from the page every 0.4 s while there is snow to land or lie. A pile belongs to the
+  // place of its card, so it survives the cards being redrawn and goes when they move.
+  function snowLedgesRefresh(t) {
+    if (t - snowLedgesAt < 400) return;
+    snowLedgesAt = t;
+    const kept = new Map();
+    snowLedges = [...document.querySelectorAll('.tz-card, .wx-card')].map(el => el.getBoundingClientRect())
+      .filter(r => r.width > 20 && r.height > 0 && r.top > 6 && r.top < snowCanvas.height)
+      .map(r => {
+        const key = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)}`;
+        const bins = snowPiles.get(key) || new Array(Math.ceil(r.width / SNOW_BIN)).fill(0);
+        kept.set(key, bins);
+        return { x0: r.left, x1: r.right, y: r.top, bins };
+      });
+    snowPiles.clear();
+    kept.forEach((bins, key) => snowPiles.set(key, bins));
   }
 
-  function snowBurstDraw(t, dt) {
-    const age = (t - snowBurst.t0) / 1000;
-    if (age > snowBurst.end) { snowBurst = null; return; }
-    snowBurst.flakes.forEach(f => {
-      const mine = age - f.delay;
-      if (mine < 0) return;
-      const [wx, wy] = snowFlurryWind(snowBurst.plan, f.x, f.y, age), k = Math.min(1, 1.6 * dt);
-      f.vx += (wx - f.vx) * k;                // the flake picks up the wind, and falls
+  // A flake coming down onto a pile or a bare edge sticks and adds to the pile; true when it landed.
+  function snowLand(f, y0) {
+    for (const L of snowLedges) {
+      if (f.x < L.x0 || f.x > L.x1) continue;
+      const i = Math.min(L.bins.length - 1, Math.floor((f.x - L.x0) / SNOW_BIN));
+      const top = L.y - L.bins[i];
+      if (y0 + f.r <= top && f.y + f.r > top) {
+        snowPileAdd(L.bins, i, f.r * f.r * 0.8, SNOW_REPOSE, SNOW_CAP).forEach((v, j) => { L.bins[j] = v; });
+        snowPiled = true;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // A press on the snowflake: a new flurry on top of whatever is falling, dealt from the time and moon, and a hold
+  // that keeps pouring more of it, in the same wind, until the press ends.
+  function snowFlurry(symbolEl, id) {
+    if (!isPink() || snowStill() || !snowFrame) return;
+    const m = getMoonPhaseData(), seed = snowFlurrySeed(Date.now(), m.illum, m.waxing), now = performance.now();
+    const box = symbolEl.getBoundingClientRect(), cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+    const plan = { ...snowFlurryPlan(seed, snowCanvas.width, snowCanvas.height, cx, cy), t0: now };
+    plan.flakes.forEach(f => snowAir.push({ ...f, plan, born: now + f.delay * 1000 }));
+    snowHolds.set(id, { plan, rnd: snowFlurryRng(seed + 1), cx, cy, next: now + 600 });
+    snowCanvas.dataset.flurry = seed;
+    snowCanvas.dataset.pouring = '1';
+    snowLedgesAt = -1e9;
+  }
+
+  function snowRelease(id) {     // no id: every press
+    if (id === undefined) snowHolds.clear(); else snowHolds.delete(id);
+    if (!snowHolds.size) delete snowCanvas.dataset.pouring;
+  }
+
+  function snowPilesDraw(dt) {
+    let any = false;
+    snowCtx.fillStyle = 'rgba(255,255,255,0.9)';
+    snowLedges.forEach(L => {
+      const b = L.bins;
+      if (!b.some(v => v > 0.02)) return;
+      any = true;
+      snowCtx.beginPath();
+      snowCtx.moveTo(L.x0, L.y);
+      b.forEach((v, i) => snowCtx.lineTo(Math.min(L.x0 + (i + 0.5) * SNOW_BIN, L.x1), L.y - v));
+      snowCtx.lineTo(L.x1, L.y);
+      snowCtx.closePath();
+      snowCtx.fill();
+      b.forEach((v, i) => { b[i] = Math.max(0, v - SNOW_MELT * dt); });   // it melts, slowly
+    });
+    snowPiled = any;
+  }
+
+  function snowAirDraw(t, dt) {
+    const w = snowCanvas.width, h = snowCanvas.height;
+    snowHolds.forEach(hold => {
+      if (t - hold.plan.t0 > SNOW_POUR_MAX_S * 1000) return;
+      if (t - hold.next > 200) hold.next = t;                  // a hidden tab's gap does not pour all at once
+      while (hold.next <= t && snowAir.length < SNOW_AIR_MAX) {
+        snowAir.push({ ...snowFlurryFlake(hold.rnd, hold.cx, hold.cy, true), plan: hold.plan, born: hold.next });
+        hold.next += 1000 / SNOW_POUR_PER_S;
+      }
+    });
+    snowAir = snowAir.filter(f => {
+      if (t < f.born) return true;                             // not out yet
+      const u = (t - f.born) / 1000 / f.life;
+      if (u > 1 || f.x < -40 || f.x > w + 40 || f.y > h + 10) return false;
+      const [wx, wy] = snowFlurryWind(f.plan, f.x, f.y, (t - f.plan.t0) / 1000), k = Math.min(1, 1.6 * dt);
+      f.vx += (wx - f.vx) * k;                                 // the flake picks up the wind, and falls
       f.vy += (wy + f.fall - f.vy) * k;
+      const y0 = f.y;
       f.x += f.vx * dt;
       f.y += f.vy * dt;
-      const u = mine / f.life;
-      if (u > 1) return;
+      if (f.vy > 0 && snowLand(f, y0)) return false;
       snowCtx.fillStyle = `rgba(255,255,255,${f.alpha * Math.min(1, u * 5, (1 - u) * 2.5)})`;
       snowCtx.beginPath();
       snowCtx.arc(f.x, f.y, f.r, 0, 6.2832);
       snowCtx.fill();
+      return true;
     });
   }
 
@@ -1510,6 +1620,8 @@
     const dt = Math.min(0.1, (t - snowLast) / 1000 || 0);   // a hidden tab's long gap does not jump the flakes
     snowLast = t;
     snowCtx.clearRect(0, 0, w, h);
+    if (snowAir.length || snowPiled) snowLedgesRefresh(t);
+    snowPilesDraw(dt);
     snowFlakes.forEach((f, i) => {
       f.y += f.vy * dt;
       if (f.y > h + 6) snowFlakes[i] = f = snowFlake(w, h, false);
@@ -1519,7 +1631,7 @@
       snowCtx.arc(x, f.y, f.r, 0, 6.2832);
       snowCtx.fill();
     });
-    if (snowBurst) snowBurstDraw(t, dt);
+    snowAirDraw(t, dt);
     snowFrame = requestAnimationFrame(snowDraw);
   }
 
@@ -1527,13 +1639,23 @@
   function snowSync() {
     cancelAnimationFrame(snowFrame);
     snowFrame = 0;
-    snowBurst = null;
+    snowAir = [];
+    snowPiles.clear();
+    snowLedges = [];
+    snowPiled = false;
+    snowRelease();
     if (!isPink() || snowStill()) { snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height); return; }
     snowResize();
     snowLast = performance.now();
     snowFrame = requestAnimationFrame(snowDraw);
   }
   window.addEventListener('resize', () => { if (snowFrame) snowResize(); });
+  document.getElementById('sa-item').addEventListener('pointerdown', e => {
+    const flake = isPink() && e.target.closest('.sa-symbol');
+    if (flake) snowFlurry(flake, e.pointerId);
+  });
+  ['pointerup', 'pointercancel'].forEach(name => document.addEventListener(name, e => snowRelease(e.pointerId)));
+  window.addEventListener('blur', () => snowRelease());
 
   // ─────────────────────────────────────────────────────────────
   //  MODES — green, pink, blue. Click the moon or press M for the next one.
