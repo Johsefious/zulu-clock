@@ -281,14 +281,16 @@
     return { days: Math.floor(hours / 24), hours: hours % 24, year };
   }
 
-  // Pink mode's card in the alert panel: days and hours, so it changes every hour.
-  function christmasItem(now, zone) {
+  // Pink mode's card in the alert panel: days and hours, so it changes every hour. `hoursFirst` (a click on the
+  // card flips it) puts the hours before the days; with no days there is nothing to put first.
+  function christmasItem(now, zone, hoursFirst) {
     const u = untilChristmas(now, zone);
     const x = new Date(Date.UTC(u.year, 11, 25));
     const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 'S'}`;
     const headline = u.today ? 'CHRISTMAS DAY'
       : u.days === 0 && u.hours === 0 ? 'LESS THAN 1 HOUR'
       : u.days === 0 ? plural(u.hours, 'HOUR')
+      : hoursFirst ? `${plural(u.hours, 'HOUR')} ${plural(u.days, 'DAY')}`
       : `${plural(u.days, 'DAY')} ${plural(u.hours, 'HOUR')}`;
     return { cat: 'TIME UNTIL CHRISTMAS', headline,
              detail: `${DAYS[x.getUTCDay()]}   ${pad(x.getUTCDate())} ${MONS[x.getUTCMonth()]} ${x.getUTCFullYear()}` };
@@ -1061,10 +1063,13 @@
   // Pink mode shows no alerts: a snowflake and the days and hours until Christmas instead.
   function isPink() { return document.documentElement.dataset.mode === 'pink'; }
 
+  // Which way round the countdown reads; a click on the pink card flips it. Kept in this page's memory only.
+  let xmasHoursFirst = false;
+
   function saRenderItem(alert) {
     const el = document.getElementById('sa-item');
     if (isPink()) {
-      const x = christmasItem(new Date());
+      const x = christmasItem(new Date(), undefined, xmasHoursFirst);
       el.innerHTML = `
         <div class="sa-symbol" style="color:rgba(var(--fg-rgb),0.28)">${SNOWFLAKE_SA_SVG}</div>
         <div class="sa-cat">${x.cat}</div>
@@ -1141,6 +1146,11 @@
     rebuildTicker();
   }
   document.getElementById('sa-item').addEventListener('dblclick', saDismissCurrent);
+  document.getElementById('sa-item').addEventListener('click', () => {
+    if (!isPink()) return;
+    xmasHoursFirst = !xmasHoursFirst;
+    saRenderItem(null);
+  });
 
   // NHC (cat:'TROPICAL') and EONET (cat:'SEVERE STORMS') both report the same
   // tropical systems. Keep the NHC entry (richer: category, wind speed, region);
