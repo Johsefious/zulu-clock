@@ -42,8 +42,8 @@ def test_clicking_the_countdown_swaps_the_order_each_time(browser):
     first = read()
     m = re.fullmatch(r'(\d+) DAYS? (\d+) HOURS?', first)
     assert m, first
-    page.click('#sa-item')
+    page.click('#sa-item .sa-headline')   # the snowflake above it starts a flurry instead
     assert re.fullmatch(r'%s HOURS? %s DAYS?' % (m.group(2), m.group(1)), read()), read()
-    page.click('#sa-item')
+    page.click('#sa-item .sa-headline')
     assert read() == first
     page.close()
